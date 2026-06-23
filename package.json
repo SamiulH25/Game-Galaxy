@@ -1,0 +1,12 @@
+{
+  "name": "game-galaxy-2",
+  "private": true,
+  "scripts": {
+    "dev": "npx concurrently -n backend,frontend -c cyan,yellow \"cd backend && uvicorn app.main:app --reload\" \"cd frontend && npm run dev\"",
+    "build": "cd frontend && npm run build",
+    "start": "cd frontend && npm run preview",
+    "start:prod": "powershell -ExecutionPolicy Bypass -File ./start-production.ps1",
+    "stop:prod": "powershell -ExecutionPolicy Bypass -File ./stop-production.ps1",
+    "install:all": "cd frontend && npm install && cd ../backend && python -m venv venv && pip install -r requirements.txt"
+  }
+}

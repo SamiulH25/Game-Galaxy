@@ -1,0 +1,10 @@
+{
+  "alpha-centauri": {
+    "starColor": "#ffcc44",
+    "starEmissive": "#ff8800",
+    "starSize": 2.0,
+    "glowColor": "#ffaa22",
+    "glowIntensity": 0.8,
+    "ambientColor": "#1a1a30"
+  }
+}

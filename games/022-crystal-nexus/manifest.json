@@ -1,0 +1,28 @@
+{
+  "id": "022-crystal-nexus",
+  "title": "Crystal Nexus",
+  "description": "Tetris evolved — element resonance chains, prism surge mode, and rift shards in a cosmic crystal universe.",
+  "detailedDescription": "Crystal Nexus takes classic Tetris into a new dimension with three unique mechanics. Element Resonance lets same-element blocks chain-react through cleared lines in element-specific patterns (Pyre burns horizontally, Frost freezes vertically, Storm arcs in a cross, Terra quakes diagonally). Prism Surge builds a charge meter from skillful clears — activate it for zero-gravity phasing pieces with 3x scoring. Rift Shards spawn every 60 lines — cover them to trigger massive board-clearing effects. Full guideline spec: SRS wall kicks, 7-bag randomizer, hold piece, 5-next queue, T-spin detection, back-to-back bonus, combo system.",
+  "planetName": "Nexara",
+  "solarSystemId": "alpha-centauri",
+  "solarSystemName": "Alpha Centauri",
+  "planetColor": "#8844ff",
+  "planetSize": 1.0,
+  "orbitRadius": 16,
+  "orbitSpeed": 0.3,
+  "thumbnail": "thumbnail.svg",
+  "screenshots": [],
+  "difficulty": "Medium",
+  "controls": "Arrow keys to move/soft drop. Up to rotate CW. Z to rotate CCW. Space to hard drop / activate Prism Surge. C to hold. Shift for 180 spin.",
+  "genre": "Puzzle, Arcade, Strategy",
+  "tags": ["puzzle", "arcade", "strategy", "unique"],
+  "characteristics": { "type": "moons", "moonColor": "#aa66ff", "moonCount": 2, "moonSize": 0.3, "moonOrbitSpeed": 0.8 },
+  "achievements": [
+    { "id": "first_clear", "title": "First Clear", "description": "Clear your first line", "icon": "star", "hidden": false },
+    { "id": "tetris", "title": "Tetris!", "description": "Clear four lines at once", "icon": "trophy", "hidden": false },
+    { "id": "elementalist", "title": "Elementalist", "description": "Trigger a 5+ chain element resonance", "icon": "bolt", "hidden": false },
+    { "id": "surge_activate", "title": "Prism Awakening", "description": "Activate Prism Surge for the first time", "icon": "diamond", "hidden": false },
+    { "id": "centurion", "title": "Centurion", "description": "Clear 100 lines total", "icon": "star", "hidden": false },
+    { "id": "rift_master", "title": "Rift Walker", "description": "Trigger 10 Rift Shard effects", "icon": "moon", "hidden": false }
+  ]
+}

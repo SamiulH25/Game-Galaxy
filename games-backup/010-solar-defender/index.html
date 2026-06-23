@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bastion Defense</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0806;overflow:hidden;font-family:'Segoe UI',sans-serif;color:#c8c0b8;user-select:none}
+canvas{display:block}
+#hud{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;pointer-events:none;z-index:10;font-size:13px}
+#hud>div{display:flex;gap:16px}
+#hud em{font-style:normal;font-weight:600}
+#hud .energy{color:#ddcc66}
+#hud .wave{color:#88bb66}
+#hud .lives{color:#cc6655}
+#hud .score{color:#7799cc}
+#turret-palette{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:10}
+.tp-btn{background:rgba(8,6,4,0.85);border:2px solid rgba(200,192,184,0.1);border-radius:12px;padding:8px 14px;color:#c8c0b8;cursor:pointer;font-family:inherit;font-size:11px;text-align:center;min-width:80px;transition:all.2s}
+.tp-btn:hover{border-color:rgba(200,192,184,0.3);background:rgba(8,6,4,0.95)}
+.tp-btn.active{border-color:#7799cc;background:rgba(119,153,204,0.15)}
+.tp-btn .tname{font-size:12px;font-weight:600;display:block}
+.tp-btn .tcost{font-size:10px;color:#ddcc66;display:block;margin-top:2px}
+#start-overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(8,6,4,0.9);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:20}
+#start-overlay h1{font-size:28px;font-weight:300;letter-spacing:4px}
+#start-overlay h1 span{color:#88bb66;font-weight:700}
+#start-overlay p{font-size:13px;color:rgba(200,192,184,0.4);margin:6px 0 20px;max-width:380px;text-align:center;line-height:1.6}
+#start-overlay button{background:linear-gradient(135deg,#88bb66,#669944);border:none;color:#0a0806;padding:12px 36px;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;transition:all.2s}
+#start-overlay button:hover{transform:translateY(-2px);box-shadow:0 4px 20px rgba(136,187,102,0.3)}
+#game-over{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:15;display:none}
+#game-over h1{font-size:28px;color:#ff4466;text-shadow:0 0 30px rgba(255,68,102,0.3)}
+#game-over p{font-size:14px;color:rgba(255,255,255,0.5);margin:4px 0}
+#game-over .big{font-size:22px;color:#44ff88;font-weight:700}
+#game-over button{background:linear-gradient(135deg,#44ff88,#22cc66);border:none;color:#000;padding:10px 28px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:12px;transition:all.2s}
+#game-over button:hover{transform:translateY(-2px)}
+#info-popup{position:absolute;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px 16px;font-size:12px;color:rgba(255,255,255,0.5);z-index:10;pointer-events:none;transition:opacity.3s;opacity:0}
+#info-popup.show{opacity:1}
+</style>
+  <script src="../bridge.js"></script>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hud">
+  <div>
+    <span>⚡ <em class="energy" id="energy">100</em></span>
+    <span>🌊 Wave <em class="wave" id="wave">1</em></span>
+  </div>
+  <div>
+    <span>❤️ <em class="lives" id="lives">10</em></span>
+    <span>⭐ <em class="score" id="score">0</em></span>
+  </div>
+</div>
+<div id="turret-palette"></div>
+<div id="info-popup">Click an orbital node to place a turret</div>
+<div id="start-overlay">
+  <h1>✦ <span>Bastion</span> Defense</h1>
+  <p>Place defenses on the castle walls to repel invaders.<br>🏹 Archer — fast, single target<br>💣 Catapult — area damage<br>🔨 Cannon — powerful, slow</p>
+  <button id="start-btn">Begin Defense</button>
+</div>
+<div id="game-over">
+  <h1>🏰 BREACHED</h1>
+  <p class="big">Wave <span id="final-wave">1</span></p>
+  <p>⭐ <span id="final-score">0</span></p>
+  <button id="restart-btn">Deploy Again</button>
+</div>
+
+<script>
+// ─── Audio ───
+let actx=null;
+function ia(){if(!actx)actx=new(window.AudioContext||window.webkitAudioContext)()}
+function tn(f,d,t='sine',v=0.04){try{ia();let o=actx.createOscillator(),g=actx.createGain();o.type=t;o.frequency.value=f;g.gain.setValueAtTime(v,actx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,actx.currentTime+d);o.connect(g);g.connect(actx.destination);o.start();o.stop(actx.currentTime+d)}catch(e){}}
+function sfxPlace(){tn(600,0.08);setTimeout(()=>tn(800,0.08),60)}
+function sfxShoot(){tn(400,0.05,'square',0.03)}
+function sfxHit(){tn(250,0.08,'sawtooth',0.04)}
+function sfxExplode(){tn(150,0.2,'sawtooth',0.06)}
+function sfxWave(){tn(400,0.1);setTimeout(()=>tn(600,0.1),100);setTimeout(()=>tn(800,0.1),200)}
+
+// ─── Canvas ───
+const canvas=document.getElementById('game');
+const ctx=canvas.getContext('2d');
+let W,H;
+function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight}
+resize();window.addEventListener('resize',resize);
+
+// ─── Geometry ───
+const CX=()=>W/2, CY=()=>H/2;
+const ORBIT_RINGS=[60,100,140,180,220];
+const NODE_COUNT=8;
+
+function getNodePos(ring,index){
+  const angle=(index/NODE_COUNT)*Math.PI*2-Math.PI/2;
+  return {x:CX()+Math.cos(angle)*ring,y:CY()+Math.sin(angle)*ring,angle};
+}
+
+// ─── Turret Types ───
+const TURRET_TYPES={
+  laser:{name:'Laser',cost:50,range:100,dmg:8,rate:10,color:'#44ddff',emoji:'⚡'},
+  missile:{name:'Missile',cost:80,range:120,dmg:15,rate:30,color:'#ff6644',emoji:'🚀',splash:40},
+  cannon:{name:'Cannon',cost:120,range:140,dmg:30,rate:45,color:'#ffdd44',emoji:'💥'},
+};
+
+// ─── Enemy Types ───
+const ENEMY_TYPES={
+  scout:{hp:20,speed:0.8,size:5,value:5,color:'#88ccff'},
+  fighter:{hp:40,speed:0.5,size:7,value:10,color:'#ff8844'},
+  tank:{hp:100,speed:0.3,size:10,value:20,color:'#ff4466'},
+  swarm:{hp:15,speed:0.9,size:4,value:3,color:'#44ff88'},
+};
+
+// ─── State ───
+const state={
+  running:false,gameOver:false,
+  wave:1,lives:10,maxLives:10,
+  energy:100,score:0,highScore:0,
+  frame:0,
+  turrets:[],
+  enemies:[],
+  projectiles:[],
+  particles:[],
+  selectedType:'laser',
+  waveEnemiesLeft:0,
+  waveSpawning:false,
+  spawnTimer:0,
+  nodes:[], // {ring, index, turret: null|{type, cooldown, level}}
+};
+
+// Initialize nodes
+ORBIT_RINGS.forEach(ring=>{
+  for(let i=0;i<NODE_COUNT;i++){
+    state.nodes.push({ring,index:i,turret:null});
+  }
+});
+
+// ─── DOM ───
+const energyEl=document.getElementById('energy');
+const waveEl=document.getElementById('wave');
+const livesEl=document.getElementById('lives');
+const scoreEl=document.getElementById('score');
+const paletteEl=document.getElementById('turret-palette');
+const infoPopup=document.getElementById('info-popup');
+const startOverlay=document.getElementById('start-overlay');
+const gameOverEl=document.getElementById('game-over');
+const finalWaveEl=document.getElementById('final-wave');
+const finalScoreEl=document.getElementById('final-score');
+
+// ─── Turret Palette ───
+Object.entries(TURRET_TYPES).forEach(([key,t])=>{
+  const btn=document.createElement('div');
+  btn.className='tp-btn'+(key==='laser'?' active':'');
+  btn.innerHTML=`<span class="tname">${t.emoji} ${t.name}</span><span class="tcost">⚡${t.cost}</span>`;
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tp-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    state.selectedType=key;
+    showInfo(`Selected: ${t.emoji} ${t.name} (⚡${t.cost})`);
+  });
+  paletteEl.appendChild(btn);
+});
+
+// ─── Show Info ───
+let infoTimer;
+function showInfo(msg){
+  infoPopup.textContent=msg;
+  infoPopup.classList.add('show');
+  clearTimeout(infoTimer);
+  infoTimer=setTimeout(()=>infoPopup.classList.remove('show'),2000);
+}
+
+// ─── Init ───
+function initGame(){
+  state.nodes.forEach(n=>n.turret=null);
+  state.turrets=[];
+  state.enemies=[];
+  state.projectiles=[];
+  state.particles=[];
+  state.wave=1;
+  state.lives=state.maxLives;
+  state.energy=100;
+  state.score=0;
+  state.frame=0;
+  state.gameOver=false;
+  state.running=true;
+  state.waveSpawning=false;
+  state.waveEnemiesLeft=0;
+  state.spawnTimer=0;
+  gameOverEl.style.display='none';
+  startOverlay.style.display='none';
+  updateHUD();
+}
+
+// ─── Wave System ───
+function startWave(){
+  state.waveSpawning=true;
+  const baseCount=3+state.wave*2;
+  state.waveEnemiesLeft=baseCount;
+  sfxWave();
+  showInfo(`🌊 Wave ${state.wave} incoming!`);
+}
+
+// ─── Spawn Enemy ───
+function spawnEnemy(){
+  const types=state.wave<3?['scout','fighter']:
+              state.wave<6?['scout','fighter','tank']:
+              ['scout','fighter','tank','swarm'];
+  const type=types[Math.floor(Math.random()*types.length)];
+  const et=ENEMY_TYPES[type];
+  
+  // Spawn on random ring/angle
+  const ringIdx=Math.floor(Math.random()*ORBIT_RINGS.length);
+  const ring=ORBIT_RINGS[ringIdx];
+  const angle=Math.random()*Math.PI*2;
+  
+  const hpMult=1+state.wave*0.15;
+  
+  state.enemies.push({
+    x:CX()+Math.cos(angle)*ring,
+    y:CY()+Math.sin(angle)*ring,
+    angle,ring,
+    hp:et.hp*hpMult,maxHp:et.hp*hpMult,
+    speed:et.speed+state.wave*0.02,
+    size:et.size,value:et.value,
+    color:et.color,type,
+    orbitDir:Math.random()>0.5?1:-1,
+    hitFlash:0,
+  });
+}
+
+// ─── Update ───
+function update(){
+  if(!state.running||state.gameOver)return;
+  state.frame++;
+  
+  // Energy generation
+  if(state.frame%30===0)state.energy+=0.5+state.nodes.filter(n=>n.turret).length*0.2;
+  
+  // Wave spawning
+  if(state.waveSpawning&&state.waveEnemiesLeft>0){
+    state.spawnTimer--;
+    if(state.spawnTimer<=0){
+      spawnEnemy();
+      state.waveEnemiesLeft--;
+      state.spawnTimer=Math.max(8,30-state.wave*2);
+    }
+  }
+  if(state.waveSpawning&&state.waveEnemiesLeft<=0&&state.enemies.length===0){
+    state.waveSpawning=false;
+    state.wave++;
+    waveEl.textContent=state.wave;
+    setTimeout(()=>startWave(),2000);
+  }
+  
+  // Enemies orbit
+  for(let i=state.enemies.length-1;i>=0;i--){
+    const e=state.enemies[i];
+    e.angle+=e.speed*0.008*e.orbitDir;
+    e.x=CX()+Math.cos(e.angle)*e.ring;
+    e.y=CY()+Math.sin(e.angle)*e.ring;
+    if(e.hitFlash>0)e.hitFlash--;
+    
+    // Check if enemies reach the sun (angle near an inner ring)
+    // They periodically move inward
+    if(state.frame%180===0&&e.ring>ORBIT_RINGS[0]){
+      e.ring-=15;
+    }
+    
+    // Reached inner core
+    if(e.ring<20){
+      state.lives--;
+      livesEl.textContent=state.lives;
+      for(let j=0;j<10;j++){
+        state.particles.push({x:e.x,y:e.y,vx:(Math.random()-0.5)*4,vy:(Math.random()-0.5)*4,life:30,color:'#ff4466',size:3});
+      }
+      state.enemies.splice(i,1);
+      if(state.lives<=0){gameOver();return;}
+      continue;
+    }
+    
+    // Remove if too far
+    if(e.ring>ORBIT_RINGS[ORBIT_RINGS.length-1]+50){
+      state.enemies.splice(i,1);
+    }
+  }
+  
+  // Turrets fire
+  state.nodes.forEach(n=>{
+    if(!n.turret)return;
+    const t=n.turret;
+    const pos=getNodePos(n.ring,n.index);
+    const tt=TURRET_TYPES[t.type];
+    
+    if(t.cooldown>0){t.cooldown--;return;}
+    
+    // Find target
+    let target=null,minDist=Infinity;
+    state.enemies.forEach(e=>{
+      const d=Math.hypot(e.x-pos.x,e.y-pos.y);
+      if(d<tt.range&&d<minDist){minDist=d;target=e;}
+    });
+    
+    if(!target)return;
+    t.cooldown=tt.rate;
+    
+    // Fire
+    state.projectiles.push({
+      x:pos.x,y:pos.y,
+      target,targetId:target,
+      speed:6,type:t.type,
+      dmg:tt.dmg+Math.floor(t.level*0.5),
+      splash:tt.splash||0,
+      color:tt.color,
+      life:120,
+    });
+    sfxShoot();
+  });
+  
+  // Projectiles
+  for(let i=state.projectiles.length-1;i>=0;i--){
+    const p=state.projectiles[i];
+    p.life--;
+    if(p.life<=0){state.projectiles.splice(i,1);continue;}
+    
+    if(!p.target||!state.enemies.includes(p.target)){
+      state.projectiles.splice(i,1);continue;
+    }
+    
+    const dx=p.target.x-p.x,dy=p.target.y-p.y;
+    const dist=Math.hypot(dx,dy);
+    if(dist<8){
+      // Hit
+      p.target.hp-=p.dmg;
+      p.target.hitFlash=5;
+      sfxHit();
+      
+      if(p.target.hp<=0){
+        // Destroyed
+        state.score+=p.target.value;
+        sfxExplode();
+        for(let j=0;j<12;j++){
+          state.particles.push({
+            x:p.target.x,y:p.target.y,
+            vx:(Math.random()-0.5)*5,vy:(Math.random()-0.5)*5,
+            life:25,color:p.target.color,size:2+Math.random()*3,
+          });
+        }
+        state.enemies=state.enemies.filter(e=>e!==p.target);
+        
+        // Splash damage
+        if(p.splash){
+          state.enemies.forEach(e=>{
+            const sd=Math.hypot(e.x-p.target.x,e.y-p.target.y);
+            if(sd<p.splash&&e!==p.target){
+              e.hp-=p.dmg*0.5;
+              e.hitFlash=5;
+            }
+          });
+        }
+      }
+      
+      state.projectiles.splice(i,1);
+    }else{
+      p.x+=dx/dist*p.speed;
+      p.y+=dy/dist*p.speed;
+    }
+  }
+  
+  // Particles
+  for(let i=state.particles.length-1;i>=0;i--){
+    const p=state.particles[i];
+    p.x+=p.vx;p.y+=p.vy;
+    p.vy+=0.05; // gravity
+    p.life--;
+    if(p.life<=0)state.particles.splice(i,1);
+  }
+  
+  updateHUD();
+}
+
+function gameOver(){
+  state.running=false;
+  state.gameOver=true;
+  finalWaveEl.textContent=state.wave;
+  finalScoreEl.textContent=state.score;
+  gameOverEl.style.display='block';
+  
+  if(state.score>state.highScore){
+    state.highScore=state.score;
+    if(window.gameBridge)window.gameBridge.save({highScore:state.highScore}).catch(()=>{});
+  }
+}
+
+// ─── HUD ───
+function updateHUD(){
+  energyEl.textContent=Math.floor(state.energy);
+  scoreEl.textContent=state.score;
+  livesEl.textContent=state.lives;
+}
+
+// ─── Draw ───
+function draw(){
+  ctx.fillStyle='#000008';
+  ctx.fillRect(0,0,W,H);
+  
+  // Stars
+  for(let i=0;i<100;i++){
+    const sx=(i*137.5)%W,sy=(i*97.3)%H;
+    ctx.fillStyle=`rgba(255,255,255,${0.08+(i%4)*0.06})`;
+    ctx.fillRect(sx,sy,1+(i%2),1+(i%2));
+  }
+  
+  // Sun
+  const sg=ctx.createRadialGradient(CX(),CY(),0,CX(),CY(),50);
+  sg.addColorStop(0,'rgba(255,200,100,0.6)');
+  sg.addColorStop(0.5,'rgba(255,150,50,0.2)');
+  sg.addColorStop(1,'rgba(255,100,0,0)');
+  ctx.fillStyle=sg;
+  ctx.beginPath();ctx.arc(CX(),CY(),50,0,Math.PI*2);ctx.fill();
+  
+  ctx.fillStyle='#ffaa44';
+  ctx.shadowColor='#ff6600';
+  ctx.shadowBlur=30;
+  ctx.beginPath();ctx.arc(CX(),CY(),20,0,Math.PI*2);ctx.fill();
+  ctx.shadowBlur=0;
+  
+  // Orbit rings
+  ORBIT_RINGS.forEach(ring=>{
+    ctx.strokeStyle='rgba(68,255,136,0.06)';
+    ctx.lineWidth=1;
+    ctx.beginPath();ctx.arc(CX(),CY(),ring,0,Math.PI*2);ctx.stroke();
+  });
+  
+  // Nodes
+  state.nodes.forEach(n=>{
+    const pos=getNodePos(n.ring,n.index);
+    if(n.turret){
+      const tt=TURRET_TYPES[n.turret.type];
+      ctx.fillStyle=tt.color;
+      ctx.shadowColor=tt.color;
+      ctx.shadowBlur=10;
+      ctx.beginPath();ctx.arc(pos.x,pos.y,8,0,Math.PI*2);ctx.fill();
+      ctx.shadowBlur=0;
+      // Level indicator
+      if(n.turret.level>0){
+        ctx.fillStyle='#fff';
+        ctx.font='8px sans-serif';
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText(n.turret.level+1,pos.x,pos.y+1);
+      }
+    }else{
+      ctx.fillStyle='rgba(255,255,255,0.05)';
+      ctx.strokeStyle='rgba(255,255,255,0.08)';
+      ctx.lineWidth=1;
+      ctx.beginPath();ctx.arc(pos.x,pos.y,7,0,Math.PI*2);ctx.fill();ctx.stroke();
+    }
+  });
+  
+  // Turret range indicator (for hovered/selected)
+  const mouse=window.__mouse||{x:0,y:0};
+  state.nodes.forEach(n=>{
+    const pos=getNodePos(n.ring,n.index);
+    if(Math.hypot(mouse.x-pos.x,mouse.y-pos.y)<15&&n.turret){
+      const tt=TURRET_TYPES[n.turret.type];
+      ctx.strokeStyle=`${tt.color}22`;
+      ctx.lineWidth=1;
+      ctx.beginPath();ctx.arc(pos.x,pos.y,tt.range,0,Math.PI*2);ctx.stroke();
+    }
+  });
+  
+  // Enemies
+  state.enemies.forEach(e=>{
+    ctx.fillStyle=e.hitFlash>0?'#fff':e.color;
+    ctx.shadowColor=e.color;
+    ctx.shadowBlur=e.hitFlash>0?15:5;
+    ctx.beginPath();ctx.arc(e.x,e.y,e.size,0,Math.PI*2);ctx.fill();
+    ctx.shadowBlur=0;
+    
+    // HP bar
+    if(e.hp<e.maxHp){
+      const bw=e.size*2.5;
+      ctx.fillStyle='rgba(255,0,0,0.3)';
+      ctx.fillRect(e.x-bw/2,e.y-e.size-5,bw,3);
+      ctx.fillStyle='rgba(68,255,136,0.6)';
+      ctx.fillRect(e.x-bw/2,e.y-e.size-5,bw*(e.hp/e.maxHp),3);
+    }
+  });
+  
+  // Projectiles
+  state.projectiles.forEach(p=>{
+    ctx.fillStyle=p.color;
+    ctx.shadowColor=p.color;
+    ctx.shadowBlur=8;
+    ctx.beginPath();ctx.arc(p.x,p.y,3,0,Math.PI*2);ctx.fill();
+    ctx.shadowBlur=0;
+  });
+  
+  // Particles
+  state.particles.forEach(p=>{
+    ctx.globalAlpha=p.life/25;
+    ctx.fillStyle=p.color;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.size*(p.life/25),0,Math.PI*2);ctx.fill();
+  });
+  ctx.globalAlpha=1;
+}
+
+// ─── Loop ───
+function loop(){
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// ─── Click Handler ───
+canvas.addEventListener('click',e=>{
+  if(!state.running||state.gameOver)return;
+  const rect=canvas.getBoundingClientRect();
+  const mx=e.clientX-rect.left,my=e.clientY-rect.top;
+  
+  // Check if clicking a node
+  state.nodes.forEach(n=>{
+    const pos=getNodePos(n.ring,n.index);
+    if(Math.hypot(mx-pos.x,my-pos.y)<15){
+      const tt=TURRET_TYPES[state.selectedType];
+      if(n.turret){
+        // Upgrade existing turret
+        const cost=(n.turret.level+1)*40+tt.cost*0.5;
+        if(state.energy>=cost&&n.turret.level<3){
+          state.energy-=cost;
+          n.turret.level++;
+          sfxPlace();
+          showInfo(`⬆️ Upgraded to level ${n.turret.level+1}`);
+        }else if(n.turret.level>=3){
+          showInfo('🔝 Already max level!');
+        }else{
+          showInfo(`⚡ Need ${Math.ceil(cost)} energy`);
+        }
+      }else{
+        // Place new turret
+        if(state.energy>=tt.cost){
+          state.energy-=tt.cost;
+          n.turret={type:state.selectedType,cooldown:0,level:0};
+          sfxPlace();
+          showInfo(`✅ ${tt.emoji} ${tt.name} deployed!`);
+        }else{
+          showInfo(`⚡ Need ${tt.cost} energy for ${tt.name}`);
+        }
+      }
+      updateHUD();
+    }
+  });
+});
+
+canvas.addEventListener('mousemove',e=>{
+  const rect=canvas.getBoundingClientRect();
+  window.__mouse={x:e.clientX-rect.left,y:e.clientY-rect.top};
+});
+
+// ─── Controls ───
+document.getElementById('start-btn').addEventListener('click',()=>{
+  initGame();
+  setTimeout(()=>startWave(),1000);
+});
+
+document.getElementById('restart-btn').addEventListener('click',()=>{
+  initGame();
+  setTimeout(()=>startWave(),1000);
+});
+
+// ─── Save/Load ───
+async function loadHighScore(){
+  if(!window.gameBridge)return;
+  try{
+    const d=await window.gameBridge.load();
+    if(d&&d.highScore)state.highScore=d.highScore;
+  }catch(e){}
+}
+
+window.__gameSaveData=()=>({highScore:state.highScore});
+window.__gameLoadData=(d)=>{if(d&&d.highScore)state.highScore=d.highScore};
+
+loadHighScore();
+loop();
+</script>
+</body>
+</html>

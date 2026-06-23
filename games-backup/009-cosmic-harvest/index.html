@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forest Glade</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a1008;overflow:hidden;font-family:'Segoe UI',sans-serif;color:#c8d8c8}
+canvas{display:block}
+#hud{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;pointer-events:none;z-index:10;font-size:13px}
+#hud>div{display:flex;gap:16px}
+#hud em{font-style:normal;color:#ddcc66;font-weight:600}
+#hud .shield{color:#66dd88}
+#hud .cargo{color:#dd8844}
+#shop-overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(8,16,10,0.9);display:none;z-index:20;flex-direction:column;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+#shop-overlay.show{display:flex}
+#shop{background:linear-gradient(135deg,#0a140e,#142018);border:1px solid rgba(221,204,102,0.15);border-radius:16px;padding:24px;max-width:440px;width:90%;max-height:80vh;overflow-y:auto}
+#shop h2{text-align:center;font-weight:300;letter-spacing:2px;margin-bottom:4px}
+#shop h2 span{color:#ddcc66;font-weight:700}
+#shop .credits{text-align:center;font-size:14px;color:rgba(200,216,200,0.5);margin-bottom:14px}
+.shop-item{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;margin-bottom:6px;background:rgba(200,216,200,0.02);border:1px solid rgba(200,216,200,0.05);border-radius:10px}
+.shop-item .info{text-align:left}
+.shop-item .iname{font-size:13px;font-weight:600}
+.shop-item .ilevel{font-size:11px;color:rgba(200,216,200,0.3)}
+.shop-item .icost{font-size:11px;color:#ddcc66}
+.shop-item button{background:rgba(221,204,102,0.15);border:1px solid rgba(221,204,102,0.2);color:#c8d8c8;padding:5px 14px;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit;transition:all.2s}
+.shop-item button:hover{background:rgba(221,204,102,0.25)}
+.shop-item button:disabled{opacity:0.3;cursor:not-allowed}
+.shop-item.maxed{opacity:0.5}
+#shop-close{background:linear-gradient(135deg,#ddcc66,#bbaa44);border:none;color:#080c08;padding:10px 32px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:12px;display:block;width:100%;transition:all.2s}
+#shop-close:hover{transform:translateY(-2px)}
+#game-over{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:15;display:none}
+#game-over h1{font-size:32px;color:#dd8866;text-shadow:0 0 30px rgba(221,136,102,0.3)}
+#game-over p{font-size:14px;color:rgba(200,216,200,0.5);margin:4px 0}
+#game-over .big{font-size:24px;color:#ddcc66;font-weight:700}
+#game-over button{background:linear-gradient(135deg,#ddcc66,#bbaa44);border:none;color:#080c08;padding:10px 28px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:12px;transition:all.2s}
+#game-over button:hover{transform:translateY(-2px)}
+#controls-hint{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);font-size:11px;color:rgba(200,216,200,0.15);pointer-events:none;z-index:5}
+</style>
+  <script src="../bridge.js"></script>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hud">
+  <div>
+    <span>🧺 <em id="credits">0</em></span>
+    <span>📦 <em class="cargo" id="cargo">0</em>/<em class="cargo" id="cargo-max">100</em></span>
+  </div>
+  <div>
+    <span>❤️ <em class="shield" id="shield">100</em></span>
+    <span>⭐ <em id="score">0</em></span>
+  </div>
+</div>
+<div id="game-over">
+  <h1>💥 LOST IN THE WOODS</h1>
+  <p class="big">⭐ <span id="final-score">0</span></p>
+  <p>🧺 +<span id="earned">0</span> supplies</p>
+  <button id="continue-btn">Continue to Shop</button>
+</div>
+<div id="shop-overlay">
+  <div id="shop">
+    <h2>✦ <span>Camp</span> Supplies</h2>
+    <div class="credits">🧺 <span id="shop-credits">0</span> supplies</div>
+    <div id="shop-items"></div>
+    <button id="shop-close">Launch Mission</button>
+  </div>
+</div>
+<div id="controls-hint">WASD / Arrows to move · Gather berries and mushrooms · Dodge rocks</div>
+
+<script>
+// ─── Audio ───
+let actx=null;
+function ia(){if(!actx)actx=new(window.AudioContext||window.webkitAudioContext)()}
+function tn(f,d,t='sine',v=0.05){try{ia();let o=actx.createOscillator(),g=actx.createGain();o.type=t;o.frequency.value=f;g.gain.setValueAtTime(v,actx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,actx.currentTime+d);o.connect(g);g.connect(actx.destination);o.start();o.stop(actx.currentTime+d)}catch(e){}}
+function sfxCollect(){tn(660,0.06,'sine',0.06);setTimeout(()=>tn(880,0.06,'sine',0.04),40)}
+function sfxHit(){tn(200,0.2,'sawtooth',0.08)}
+function sfxUpgrade(){tn(500,0.1);setTimeout(()=>tn(700,0.1),80);setTimeout(()=>tn(900,0.1),160)}
+
+// ─── Canvas ───
+const canvas=document.getElementById('game');
+const ctx=canvas.getContext('2d');
+let W,H;
+function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight}
+resize();window.addEventListener('resize',resize);
+
+// ─── State ───
+const state={
+  running:false,gameOver:false,
+  ship:{x:0,y:0,vx:0,vy:0,radius:14,speed:3},
+  resources:[],hazards:[],particles:[],
+  credits:0,cargo:0,score:0,totalEarned:0,
+  shield:100,maxShield:100,
+  cargoMax:100,collectRange:60,
+  difficulty:1,frame:0,timer:0,
+  upgrades:{
+    speed:{lvl:0,cost:50,max:8,mult:1.15,label:'Stride'},
+    cargo:{lvl:0,cost:40,max:10,mult:1.2,label:'Basket'},
+    shield:{lvl:0,cost:60,max:8,mult:1.18,label:'Breath'},
+    range:{lvl:0,cost:45,max:8,mult:1.2,label:'Senses'},
+  },
+  keys:{},
+};
+const UPGRADE_KEYS=['speed','cargo','shield','range'];
+
+// ─── DOM ───
+const creditsEl=document.getElementById('credits');
+const cargoEl=document.getElementById('cargo');
+const cargoMaxEl=document.getElementById('cargo-max');
+const shieldEl=document.getElementById('shield');
+const scoreEl=document.getElementById('score');
+const gameOverEl=document.getElementById('game-over');
+const finalScoreEl=document.getElementById('final-score');
+const earnedEl=document.getElementById('earned');
+const shopOverlay=document.getElementById('shop-overlay');
+const shopCreditsEl=document.getElementById('shop-credits');
+
+function applyUpgrades(){
+  state.ship.speed=3+state.upgrades.speed.lvl*0.5;
+  state.cargoMax=100+state.upgrades.cargo.lvl*40;
+  state.maxShield=100+state.upgrades.shield.lvl*30;
+  state.collectRange=60+state.upgrades.range.lvl*15;
+}
+
+// ─── Init ───
+function initGame(){
+  state.ship.x=W/2;state.ship.y=H/2;
+  state.ship.vx=0;state.ship.vy=0;
+  state.resources=[];state.hazards=[];
+  state.cargo=0;state.score=0;
+  state.shield=state.maxShield;
+  state.difficulty=1;state.frame=0;
+  state.timer=0;
+  state.gameOver=false;state.running=true;
+  state.particles=[];
+  gameOverEl.style.display='none';
+  shopOverlay.classList.remove('show');
+  applyUpgrades();
+}
+
+// ─── Spawn ───
+function spawnResource(){
+  const types=[{name:'berries',color:'#dd6677',value:1,size:5+Math.random()*4},
+               {name:'mushroom',color:'#dd8844',value:3,size:4+Math.random()*3},
+               {name:'herb',color:'#66dd88',value:5,size:3+Math.random()*3}];
+  const t=types[Math.floor(Math.random()*3)];
+  const angle=Math.random()*Math.PI*2;
+  const dist=200+Math.random()*300;
+  state.resources.push({
+    x:state.ship.x+Math.cos(angle)*dist,
+    y:state.ship.y+Math.sin(angle)*dist,
+    ...t,size:t.size+Math.random()*2,
+  });
+}
+
+function spawnHazard(){
+  const types=['rock','thornbush','fallen_tree'];
+  const t=types[Math.floor(Math.random()*3)];
+  const angle=Math.random()*Math.PI*2;
+  const dist=200+Math.random()*250;
+  state.hazards.push({
+    x:state.ship.x+Math.cos(angle)*dist,
+    y:state.ship.y+Math.sin(angle)*dist,
+    type:t,
+    size:t==='thornbush'?18+Math.random()*10:t==='rock'?12+Math.random()*10:8+Math.random()*6,
+    pulse:0,
+  });
+}
+
+// ─── Update ───
+function update(){
+  if(!state.running||state.gameOver)return;
+  state.frame++;
+  
+  // Difficulty scaling
+  state.difficulty=1+state.timer*0.005;
+  
+  // Ship movement
+  let dx=0,dy=0;
+  if(state.keys['w']||state.keys['arrowup'])dy=-1;
+  if(state.keys['s']||state.keys['arrowdown'])dy=1;
+  if(state.keys['a']||state.keys['arrowleft'])dx=-1;
+  if(state.keys['d']||state.keys['arrowright'])dx=1;
+  
+  if(dx||dy){
+    const len=Math.sqrt(dx*dx+dy*dy);
+    dx/=len;dy/=len;
+  }
+  
+  state.ship.vx+=(dx*state.ship.speed-state.ship.vx)*0.15;
+  state.ship.vy+=(dy*state.ship.speed-state.ship.vy)*0.15;
+  state.ship.x+=state.ship.vx;
+  state.ship.y+=state.ship.vy;
+  
+  // World wrap
+  if(state.ship.x<-50)state.ship.x=W+50;
+  if(state.ship.x>W+50)state.ship.x=-50;
+  if(state.ship.y<-50)state.ship.y=H+50;
+  if(state.ship.y>H+50)state.ship.y=-50;
+  
+  // Spawn
+  const spawnRate=Math.max(15,60-state.difficulty*3);
+  if(state.frame%Math.floor(spawnRate)===0)spawnResource();
+  if(state.frame%Math.floor(spawnRate*2.5)===0)spawnHazard();
+  
+  // Collect resources
+  for(let i=state.resources.length-1;i>=0;i--){
+    const r=state.resources[i];
+    const dist=Math.hypot(r.x-state.ship.x,r.y-state.ship.y);
+    if(dist<state.collectRange&&state.cargo<state.cargoMax){
+      // Magnet effect
+      r.x+=(state.ship.x-r.x)*0.05;
+      r.y+=(state.ship.y-r.y)*0.05;
+    }
+    if(dist<state.ship.radius+5&&state.cargo<state.cargoMax){
+      state.cargo++;
+      state.score+=r.value;
+      sfxCollect();
+      // Particle burst
+      for(let j=0;j<5;j++){
+        state.particles.push({
+          x:r.x,y:r.y,vx:(Math.random()-0.5)*3,vy:(Math.random()-0.5)*3,
+          life:30,color:r.color,size:2+Math.random()*2,
+        });
+      }
+      state.resources.splice(i,1);
+    }
+  }
+  
+  // Hazard collision
+  for(let i=state.hazards.length-1;i>=0;i--){
+    const h=state.hazards[i];
+    const dist=Math.hypot(h.x-state.ship.x,h.y-state.ship.y);
+    const hitDist=h.type==='thornbush'?h.size+15:h.size+state.ship.radius;
+    
+    // Thornbush slow effect
+    if(h.type==='thornbush'){
+      const pull=30/(dist+10);
+      state.ship.vx-=(h.x-state.ship.x)*0.0002*pull;
+      state.ship.vy-=(h.y-state.ship.y)*0.0002*pull;
+    }
+    
+    if(dist<hitDist){
+      if(h.type==='fallen_tree'){
+        state.shield-=10;
+      }else{
+        state.shield-=15;
+      }
+      sfxHit();
+      // Explosion particles
+      for(let j=0;j<8;j++){
+        state.particles.push({
+          x:h.x,y:h.y,vx:(Math.random()-0.5)*5,vy:(Math.random()-0.5)*5,
+          life:20,color:'#ff4466',size:3+Math.random()*3,
+        });
+      }
+      state.hazards.splice(i,1);
+      
+      if(state.shield<=0){
+        shipDestroyed();
+        return;
+      }
+    }
+    
+    // Remove far hazards
+    if(Math.abs(h.x-state.ship.x)>500||Math.abs(h.y-state.ship.y)>500){
+      state.hazards.splice(i,1);
+    }
+  }
+  
+  // Clean far resources
+  for(let i=state.resources.length-1;i>=0;i--){
+    if(Math.abs(state.resources[i].x-state.ship.x)>500||Math.abs(state.resources[i].y-state.ship.y)>500){
+      state.resources.splice(i,1);
+    }
+  }
+  
+  // Update particles
+  for(let i=state.particles.length-1;i>=0;i--){
+    const p=state.particles[i];
+    p.x+=p.vx;p.y+=p.vy;
+    p.life--;
+    if(p.life<=0)state.particles.splice(i,1);
+  }
+  
+  state.timer+=1/60;
+  updateHUD();
+}
+
+function shipDestroyed(){
+  state.gameOver=true;
+  state.running=false;
+  const earned=Math.floor(state.score/2);
+  state.credits+=earned;
+  finalScoreEl.textContent=state.score;
+  earnedEl.textContent=earned;
+  gameOverEl.style.display='block';
+  
+  // Auto-save
+  if(window.gameBridge){
+    window.gameBridge.save({
+      credits:state.credits,
+      upgrades:state.upgrades,
+      highScore:Math.max(state.score,state.highScore||0),
+    }).catch(()=>{});
+  }
+}
+
+// ─── HUD ───
+function updateHUD(){
+  creditsEl.textContent=state.credits;
+  cargoEl.textContent=state.cargo;
+  cargoMaxEl.textContent=state.cargoMax;
+  shieldEl.textContent=Math.floor(state.shield);
+  scoreEl.textContent=state.score;
+}
+
+// ─── Draw ───
+function draw(){
+  const grad=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,W*0.7);
+  grad.addColorStop(0,'#1a2e1a');
+  grad.addColorStop(0.5,'#0e1a10');
+  grad.addColorStop(1,'#080c08');
+  ctx.fillStyle=grad;
+  ctx.fillRect(0,0,W,H);
+  
+  // Trees in background
+  for(let i=0;i<40;i++){
+    const tx=(i*67.3+state.timer*0.3)%W;
+    const ty=H-40-(i%5)*25-Math.sin(i*1.3+state.timer*0.01)*10;
+    ctx.fillStyle=`rgba(30,60,30,${0.08+(i%3)*0.04})`;
+    ctx.beginPath();
+    ctx.moveTo(tx,ty);
+    ctx.lineTo(tx-6+Math.sin(i*0.7)*3,ty+20);
+    ctx.lineTo(tx+6+Math.sin(i*0.7)*3,ty+20);
+    ctx.closePath();ctx.fill();
+  }
+  
+  // Light rays through canopy
+  for(let i=0;i<5;i++){
+    const rx=(i*W/4+state.timer*0.2)%W;
+    ctx.fillStyle=`rgba(180,220,140,${0.015+0.008*Math.sin(i*2.3+state.timer*0.005)})`;
+    ctx.beginPath();
+    ctx.moveTo(rx-8,0);ctx.lineTo(rx+8,0);
+    ctx.lineTo(rx+40,H);ctx.lineTo(rx-40,H);
+    ctx.closePath();ctx.fill();
+  }
+  
+  // Resources
+  for(const r of state.resources){
+    const dist=Math.hypot(r.x-state.ship.x,r.y-state.ship.y);
+    const near=dist<state.collectRange;
+    
+    ctx.fillStyle=near?r.color:r.color+'66';
+    ctx.shadowColor=near?r.color:'transparent';
+    ctx.shadowBlur=near?10:0;
+    ctx.beginPath();
+    if(r.name==='orb'){
+      ctx.arc(r.x,r.y,r.size,0,Math.PI*2);
+    }else if(r.name==='crystal'){
+      ctx.moveTo(r.x,r.y-r.size);
+      ctx.lineTo(r.x+r.size*0.7,r.y);
+      ctx.lineTo(r.x,r.y+r.size);
+      ctx.lineTo(r.x-r.size*0.7,r.y);
+      ctx.closePath();
+    }else{
+      ctx.moveTo(r.x+r.size,0);
+      for(let j=1;j<=5;j++){
+        const a=(j/5)*Math.PI*2-Math.PI/2;
+        const rad=j%2===0?r.size:r.size*0.5;
+        ctx.lineTo(r.x+Math.cos(a)*rad,r.y+Math.sin(a)*rad);
+      }
+      ctx.closePath();
+    }
+    ctx.fill();
+    ctx.shadowBlur=0;
+  }
+  
+  // Hazards
+  for(const h of state.hazards){
+    h.pulse+=0.05;
+    const glow=Math.sin(h.pulse)*0.3+0.7;
+    
+    if(h.type==='thornbush'){
+      ctx.fillStyle='#2a1a0e';
+      ctx.shadowColor='#5a3a1a';
+      ctx.shadowBlur=10;
+      ctx.beginPath();
+      ctx.arc(h.x,h.y,h.size,0,Math.PI*2);
+      ctx.fill();
+      // Thorns
+      for(let t=0;t<8;t++){
+        const ta=t*Math.PI/4+state.timer*0.02;
+        ctx.strokeStyle='#4a2a10';
+        ctx.lineWidth=2;
+        ctx.beginPath();
+        ctx.moveTo(h.x+Math.cos(ta)*h.size*0.6,h.y+Math.sin(ta)*h.size*0.6);
+        const tl=h.size*0.8+Math.sin(state.timer*0.05+t)*5;
+        ctx.lineTo(h.x+Math.cos(ta)*tl,h.y+Math.sin(ta)*tl);
+        ctx.stroke();
+      }
+    }else if(h.type==='rock'){
+      ctx.fillStyle=`rgba(100,90,80,${glow})`;
+      ctx.shadowColor='rgba(100,90,80,0.3)';
+      ctx.shadowBlur=5;
+      ctx.beginPath();
+      ctx.arc(h.x,h.y,h.size,0,Math.PI*2);
+      ctx.fill();
+      // Crack detail
+      ctx.strokeStyle='rgba(60,50,40,0.5)';
+      ctx.lineWidth=1.5;
+      ctx.beginPath();
+      ctx.moveTo(h.x-h.size*0.3,h.y-h.size*0.2);
+      ctx.lineTo(h.x+h.size*0.1,h.y+h.size*0.1);
+      ctx.lineTo(h.x+h.size*0.4,h.y-h.size*0.3);
+      ctx.stroke();
+    }else if(h.type==='fallen_tree'){
+      ctx.fillStyle=`rgba(50,35,20,${0.6*glow})`;
+      ctx.shadowColor='rgba(50,35,20,0.3)';
+      ctx.shadowBlur=5;
+      // Log
+      ctx.save();
+      ctx.translate(h.x,h.y);
+      const rot=h.pulse*0.1;
+      ctx.rotate(rot);
+      ctx.fillRect(-h.size*1.2,-h.size*0.2,h.size*2.4,h.size*0.4);
+      // Branches
+      ctx.strokeStyle='#3a2510';
+      ctx.lineWidth=2;
+      for(let b=0;b<3;b++){
+        const ba=-0.5+b*0.5;
+        ctx.beginPath();
+        ctx.moveTo(-h.size*0.6+ba*h.size*0.8,-h.size*0.2);
+        ctx.lineTo(-h.size*0.4+ba*h.size*0.8,-h.size*0.6-Math.sin(ba)*5);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    ctx.shadowBlur=0;
+  }
+  
+  // Particles
+  for(const p of state.particles){
+    ctx.globalAlpha=p.life/30;
+    ctx.fillStyle=p.color;
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,p.size*(p.life/30),0,Math.PI*2);
+    ctx.fill();
+  }
+  ctx.globalAlpha=1;
+  
+  // Forager character
+  ctx.save();
+  ctx.translate(state.ship.x,state.ship.y);
+  
+  // Basket
+  ctx.fillStyle='#bb8844';
+  ctx.shadowColor='#bb8844';
+  ctx.shadowBlur=5;
+  ctx.beginPath();
+  ctx.ellipse(0,4,state.ship.radius*0.6,state.ship.radius*0.35,0,0,Math.PI*2);
+  ctx.fill();
+  ctx.fillStyle='#996633';
+  ctx.fillRect(-state.ship.radius*0.5,-2,state.ship.radius,5);
+  
+  // Character body
+  ctx.fillStyle='#446644';
+  ctx.shadowBlur=8;
+  ctx.beginPath();
+  ctx.arc(0,-4,state.ship.radius*0.45,0,Math.PI*2);
+  ctx.fill();
+  
+  // Head
+  ctx.fillStyle='#ddbb88';
+  ctx.beginPath();
+  ctx.arc(0,-state.ship.radius*0.55,state.ship.radius*0.3,0,Math.PI*2);
+  ctx.fill();
+  
+  // Hat
+  ctx.fillStyle='#885522';
+  ctx.beginPath();
+  ctx.ellipse(0,-state.ship.radius*0.8,state.ship.radius*0.5,state.ship.radius*0.12,0,0,Math.PI*2);
+  ctx.fill();
+  ctx.fillRect(-state.ship.radius*0.15,-state.ship.radius*0.95,state.ship.radius*0.3,state.ship.radius*0.2);
+  
+  ctx.shadowBlur=0;
+  
+  // Shield indicator
+  if(state.shield<state.maxShield*0.3){
+    ctx.strokeStyle=`rgba(255,68,102,${0.3+Math.sin(state.timer*5)*0.2})`;
+    ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.arc(0,0,state.ship.radius+4,0,Math.PI*2);
+    ctx.stroke();
+  }
+  
+  ctx.restore();
+  
+  // Collect range indicator (subtle)
+  ctx.strokeStyle='rgba(255,221,68,0.05)';
+  ctx.lineWidth=1;
+  ctx.beginPath();
+  ctx.arc(state.ship.x,state.ship.y,state.collectRange,0,Math.PI*2);
+  ctx.stroke();
+}
+
+// ─── Loop ───
+function loop(){
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// ─── Controls ───
+document.addEventListener('keydown',e=>{state.keys[e.key.toLowerCase()]=true;if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase()))e.preventDefault()});
+document.addEventListener('keyup',e=>{state.keys[e.key.toLowerCase()]=false});
+
+document.getElementById('continue-btn').addEventListener('click',()=>{
+  gameOverEl.style.display='none';
+  shopOverlay.classList.add('show');
+  renderShop();
+});
+
+document.getElementById('shop-close').addEventListener('click',()=>{
+  shopOverlay.classList.remove('show');
+  initGame();
+});
+
+function renderShop(){
+  shopCreditsEl.textContent=state.credits;
+  const container=document.getElementById('shop-items');
+  container.innerHTML='';
+  
+  const icons={speed:'🚀',cargo:'📦',shield:'🛡️',range:'📡'};
+  
+  UPGRADE_KEYS.forEach(key=>{
+    const u=state.upgrades[key];
+    const maxed=u.lvl>=u.max;
+    const cost=Math.floor(u.cost*Math.pow(u.mult,u.lvl));
+    const item=document.createElement('div');
+    item.className='shop-item'+(maxed?' maxed':'');
+    item.innerHTML=`
+      <div class="info">
+        <div class="iname">${icons[key]} ${u.label}</div>
+        <div class="ilevel">Level ${u.lvl}/${u.max}</div>
+        ${maxed?'<div class="icost">MAXED</div>':`<div class="icost">💰 ${cost}</div>`}
+      </div>
+      <button ${(state.credits<cost||maxed)?'disabled':''}>${maxed?'MAX':'Buy'}</button>`;
+    item.querySelector('button').addEventListener('click',()=>{
+      if(state.credits<cost||maxed)return;
+      state.credits-=cost;
+      u.lvl++;
+      sfxUpgrade();
+      shopCreditsEl.textContent=state.credits;
+      if(window.gameBridge){
+        window.gameBridge.save({credits:state.credits,upgrades:state.upgrades}).catch(()=>{});
+      }
+      renderShop();
+    });
+    container.appendChild(item);
+  });
+}
+
+// ─── Save/Load ───
+async function loadProgress(){
+  if(!window.gameBridge)return;
+  try{
+    const d=await window.gameBridge.load();
+    if(d){
+      if(d.credits!==undefined)state.credits=d.credits;
+      if(d.upgrades)Object.assign(state.upgrades,d.upgrades);
+      if(d.highScore)state.highScore=d.highScore;
+    }
+  }catch(e){}
+  applyUpgrades();
+  updateHUD();
+}
+
+window.__gameSaveData=()=>({credits:state.credits,upgrades:state.upgrades,highScore:state.highScore});
+window.__gameLoadData=(d)=>{if(!d)return;if(d.credits!==undefined)state.credits=d.credits;if(d.upgrades)Object.assign(state.upgrades,d.upgrades);if(d.highScore)state.highScore=d.highScore;applyUpgrades();updateHUD()};
+
+loadProgress();
+initGame();
+loop();
+</script>
+</body>
+</html>

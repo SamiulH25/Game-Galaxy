@@ -1,0 +1,248 @@
+/**
+ * Paper Drift — UI layer styling.
+ * High-contrast serif typography and papercraft HUD chrome.
+ */
+
+@import url("https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&display=swap");
+
+:root {
+  --paper: #e8e4d9;
+  --ink: #1a1a1a;
+  --cream: #fdfbf7;
+  --river-mist: #a8c8d8;
+  --soggy-ok: #6b9e7b;
+  --soggy-warn: #c9a227;
+  --soggy-danger: #c45c4a;
+  --font-serif: "Merriweather", Georgia, "Times New Roman", serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-serif);
+  -webkit-font-smoothing: antialiased;
+  touch-action: none;
+}
+
+#app {
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+#game-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+}
+
+/* CSS paper grain — complements canvas noise */
+.paper-grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.22;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.45'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+  z-index: 1;
+}
+
+.hud {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  display: none;
+  padding: max(0.65rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right))
+    0.45rem max(0.75rem, env(safe-area-inset-left));
+  pointer-events: none;
+}
+
+.hud.is-visible {
+  display: block;
+}
+
+.hud-row {
+  display: grid;
+  grid-template-columns: 1fr minmax(140px, 2fr) 1fr;
+  gap: 0.75rem;
+  align-items: end;
+  background: rgba(253, 251, 247, 0.88);
+  border: 3px solid var(--ink);
+  border-radius: 2px;
+  padding: 0.55rem 0.75rem 0.65rem;
+  box-shadow: 0 4px 0 rgba(26, 26, 26, 0.12);
+}
+
+.hud-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.hud-stat--center {
+  align-items: stretch;
+}
+
+.hud-stat--right {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.hud-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(26, 26, 26, 0.62);
+}
+
+.hud-stat strong {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.1;
+}
+
+.lives {
+  font-size: 1.05rem;
+  letter-spacing: 0.08em;
+  color: #8b3a3a;
+}
+
+.soggy-track {
+  height: 14px;
+  border: 2px solid var(--ink);
+  border-radius: 2px;
+  background: rgba(232, 228, 217, 0.9);
+  overflow: hidden;
+}
+
+.soggy-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--soggy-ok);
+  transition: width 0.12s linear, background 0.25s ease;
+}
+
+.soggy-fill.soggy--warn {
+  background: var(--soggy-warn);
+}
+
+.soggy-fill.soggy--danger {
+  background: var(--soggy-danger);
+}
+
+.hud-hint {
+  margin: 0.35rem 0 0;
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: rgba(26, 26, 26, 0.55);
+  letter-spacing: 0.04em;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: none;
+  place-items: center;
+  padding: 1.25rem;
+  background: rgba(232, 228, 217, 0.72);
+  backdrop-filter: blur(3px);
+}
+
+.overlay.is-open {
+  display: grid;
+}
+
+.overlay-card {
+  max-width: 400px;
+  width: 100%;
+  padding: 1.5rem 1.35rem;
+  background: var(--cream);
+  border: 3px solid var(--ink);
+  border-radius: 2px;
+  box-shadow: 0 8px 0 rgba(26, 26, 26, 0.14);
+  text-align: center;
+}
+
+.overlay-card h1 {
+  margin: 0 0 0.65rem;
+  font-size: clamp(1.55rem, 5vw, 2rem);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.overlay-card p {
+  margin: 0 0 1.15rem;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: rgba(26, 26, 26, 0.78);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  min-width: 148px;
+  padding: 0.65rem 1.25rem;
+  border: 3px solid var(--ink);
+  border-radius: 2px;
+  background: var(--river-mist);
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  box-shadow: 0 3px 0 rgba(26, 26, 26, 0.18);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 0 rgba(26, 26, 26, 0.16);
+}
+
+.btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 rgba(26, 26, 26, 0.2);
+}
+
+@media (max-width: 560px) {
+  .hud-row {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .hud-stat--right {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .hud-hint {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .soggy-fill {
+    transition: none;
+  }
+}

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Crystal Nexus</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="../bridge.js"></script>
+</head>
+<body>
+<div id="game-container">
+  <canvas id="game-canvas"></canvas>
+
+  <!-- Mobile touch controls -->
+  <div id="touch-controls">
+    <button class="touch-btn" data-action="moveLeft">&#9664;</button>
+    <button class="touch-btn" data-action="rotateCW">&#8635;</button>
+    <button class="touch-btn" data-action="moveRight">&#9654;</button>
+    <button class="touch-btn" data-action="softDrop">&#9660;</button>
+    <button class="touch-btn" data-action="hardDrop">&#9191;</button>
+    <button class="touch-btn" data-action="hold">H</button>
+    <button class="touch-btn" data-action="prismSurge">P</button>
+  </div>
+
+  <!-- Overlay screens -->
+  <div id="overlay" class="overlay hidden">
+    <div class="overlay-content">
+      <h1 class="game-title">CRYSTAL NEXUS</h1>
+      <p class="subtitle">TETRIS EVOLVED</p>
+      <div id="overlay-body"></div>
+    </div>
+  </div>
+
+  <!-- Top HUD -->
+  <div id="hud-top">
+    <div class="hud-item"><span class="hud-label">SCORE</span><span id="hud-score" class="hud-value">0</span></div>
+    <div class="hud-item"><span class="hud-label">LEVEL</span><span id="hud-level" class="hud-value">1</span></div>
+    <div class="hud-item"><span class="hud-label">LINES</span><span id="hud-lines" class="hud-value">0</span></div>
+  </div>
+</div>
+
+<script src="js/engine.js"></script>
+<script src="js/renderer.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

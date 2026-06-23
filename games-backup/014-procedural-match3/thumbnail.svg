@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <rect width="128" height="128" fill="#F4EDE0"/>
+  <rect x="8" y="8" width="112" height="112" rx="4" fill="#EDE4D3" stroke="#8B7355" stroke-width="1" opacity="0.5"/>
+  <circle cx="40" cy="44" r="14" fill="#5B7C8A"/>
+  <circle cx="64" cy="44" r="14" fill="#C46B4A"/>
+  <circle cx="88" cy="44" r="14" fill="#6B8F71"/>
+  <circle cx="52" cy="68" r="14" fill="#8B6B9E"/>
+  <circle cx="76" cy="68" r="14" fill="#C9A227"/>
+  <circle cx="64" cy="92" r="14" fill="#5B7C8A"/>
+  <text x="64" y="118" text-anchor="middle" font-family="Georgia, serif" font-size="9" fill="#3D3428" letter-spacing="1">MATCH</text>
+</svg>

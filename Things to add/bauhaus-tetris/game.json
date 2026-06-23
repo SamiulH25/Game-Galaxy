@@ -1,0 +1,8 @@
+{
+  "id": "bauhaus-tetris",
+  "title": "Bauhaus Tetris",
+  "description": "Guideline Tetris with a museum-quality Bauhaus editorial aesthetic.",
+  "thumbnail": "thumbnail.svg",
+  "entry": "index.html",
+  "tags": ["puzzle", "arcade", "hosted"]
+}

@@ -1,0 +1,20 @@
+{
+  "id": "010-solar-defender",
+  "title": "Bastion Defense",
+  "description": "Defend the fortress from invading forces. Place archers, catapults, and cannons on the battlements. Survive increasingly difficult waves.",
+  "detailedDescription": "Command the defenses of an ancient fortress under siege. Place archers, catapults, cannons, and magical towers along the battlements, each with unique upgrade paths and targeting priorities. Manage your supply chain between waves â€” spend gold on repairs, new units, and fortification upgrades. The enemy forces grow smarter and more numerous with each wave, introducing flying units, siege engines, and subterranean miners. The medieval fantasy setting is brought to life with hand-drawn unit sprites, dynamic weather, and a stirring orchestral soundtrack.",
+  "planetName": "Bastion",
+  "solarSystemId": "vega",
+  "solarSystemName": "Vega",
+  "planetColor": "#88bb66",
+  "planetSize": 1.4,
+  "orbitRadius": 10,
+  "orbitSpeed": 0.2,
+  "thumbnail": "",
+  "screenshots": [],
+  "difficulty": "Hard",
+  "controls": "Click empty battlement slots to place defenses. Click existing defenses to upgrade. Use the supply panel between waves. Survive all waves to win.",
+  "genre": "Strategy, Tower Defense, Action, Medieval",
+  "tags": ["strategy", "tower-defense", "action", "medieval"],
+  "characteristics": { "type": "moons", "moonCount": 2, "moonSize": 0.18, "moonOrbitRadius": 2.3, "moonColor": "#88bb66" }
+}

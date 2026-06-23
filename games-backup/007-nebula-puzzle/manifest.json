@@ -1,0 +1,20 @@
+{
+  "id": "007-nebula-puzzle",
+  "title": "Mosaic Puzzle",
+  "description": "Slide the tiles to reveal a procedurally generated mosaic artwork. Multiple grid sizes, two game modes, and a new mosaic every game.",
+  "detailedDescription": "A sliding tile puzzle where every game presents a fresh mosaic generated from procedural patterns. Choose from 3x3, 4x4, or 5x5 grids, then slide tiles into the empty space to reconstruct the original artwork. Two modes are available: Classic mode shows the full image as a reference, while Challenge mode requires you to solve from memory after a brief preview. The procedural generation creates vibrant geometric mosaics inspired by stained glass, Islamic geometric art, and modern abstract design. Move counter tracks your efficiency.",
+  "planetName": "Nubila",
+  "solarSystemId": "orion",
+  "solarSystemName": "Orion",
+  "planetColor": "#ddaa66",
+  "planetSize": 0.8,
+  "orbitRadius": 12,
+  "orbitSpeed": 0.55,
+  "thumbnail": "",
+  "screenshots": [],
+  "difficulty": "Easy",
+  "controls": "Click a tile adjacent to the empty space to slide it. Use arrow keys as an alternative. Complete the mosaic to win.",
+  "genre": "Puzzle, Relaxing, Strategy, Art",
+  "tags": ["puzzle", "relaxing", "strategy", "art"],
+  "characteristics": { "type": "atmosphere", "atmoColor": "#ddaa66", "atmoIntensity": 0.5 }
+}

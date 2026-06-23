@@ -1,0 +1,20 @@
+{
+  "id": "016-nova-tiles",
+  "title": "Mystic Tiles",
+  "description": "A turn-based roguelike tile-reveal explorer. Navigate a 10x10 enchanted forest grid, dodge ancient traps, and reach the hidden portal.",
+  "detailedDescription": "An enchanted forest materializes as a 10x10 grid of hidden tiles. Every step reveals what lies beneath â€” safe paths, ancient traps (spikes, poison ivy, crumbling ground), glowing wisdom crystals, and the elusive portal that advances you to the next level. Turn-based movement means every decision counts: plan your route, memorize revealed tiles, and manage risk. Between expeditions, spend wisdom crystals on permanent boons: extra health, trap detection, crystal magnetism, and portal sense. Permadeath makes every expedition tense and meaningful.",
+  "planetName": "Tessella",
+  "solarSystemId": "vega",
+  "solarSystemName": "Vega",
+  "planetColor": "#66cc88",
+  "planetSize": 1.0,
+  "orbitRadius": 12,
+  "orbitSpeed": 0.25,
+  "thumbnail": "",
+  "screenshots": [],
+  "difficulty": "Hard",
+  "controls": "Arrow keys or WASD to move one tile at a time. Revealed tiles show their contents. Reach the portal to advance. Spend crystals between runs on permanent upgrades.",
+  "genre": "Roguelike, Strategy, Puzzle, Exploration",
+  "tags": ["roguelike", "strategy", "puzzle", "exploration", "fantasy"],
+  "characteristics": { "type": "atmosphere", "atmoColor": "#66cc88", "atmoIntensity": 0.5 }
+}

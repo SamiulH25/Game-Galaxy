@@ -1,0 +1,20 @@
+{
+  "id": "012-midnight-alchemist",
+  "title": "Midnight Alchemist",
+  "description": "Victorian pharmacy sim — brew potions by night, gather ingredients by day, serve six patrons at once.",
+  "detailedDescription": "Live the double life of a Victorian-era alchemist. By daylight, scour the cobblestone streets, misty moors, and dimly lit apothecary gardens for rare ingredients. By night, brew complex potions in your candle-lit workshop and tend to the ailments of six simultaneous patrons. Each patron has unique needs, personalities, and escalating demands. Master a branching recipe tree, invest in equipment upgrades, and manage your reputation as word spreads through the fog-shrouded city.",
+  "planetName": "Nocturne",
+  "solarSystemId": "orion",
+  "solarSystemName": "Orion",
+  "planetColor": "#9944cc",
+  "planetSize": 1.2,
+  "orbitRadius": 14,
+  "orbitSpeed": 0.28,
+  "thumbnail": "thumbnail.svg",
+  "screenshots": [],
+  "difficulty": "Hard",
+  "controls": "Click ingredients to gather during the day phase. At night, drag ingredients to the cauldron to brew. Serve patrons by delivering the correct potion.",
+  "genre": "Simulation, Strategy, Management",
+  "tags": ["simulation", "strategy", "hosted"],
+  "characteristics": { "type": "atmosphere", "atmoColor": "#aa55dd", "atmoIntensity": 0.55 }
+}

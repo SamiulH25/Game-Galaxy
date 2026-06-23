@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arcane Forge</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:linear-gradient(135deg,#0a0510,#15081a,#0a0510);font-family:'Segoe UI',sans-serif;color:#d0c8e0;min-height:100vh;display:flex;justify-content:center;align-items:center}
+#game{width:100%;max-width:600px;padding:16px}
+h1{font-size:20px;font-weight:300;letter-spacing:3px;text-align:center}
+h1 span{color:#aa66dd;font-weight:700}
+#plasma-display{text-align:center;margin:6px 0 12px}
+#plasma-count{font-size:32px;font-weight:700;color:#cc88ee}
+#plasma-rate{font-size:12px;color:rgba(208,200,224,0.4)}
+#forge-btn{display:block;width:120px;height:120px;border-radius:50%;margin:8px auto;background:radial-gradient(circle at 35% 35%,#cc88ee,#8833aa 60%,#441155);border:3px solid rgba(170,102,221,0.3);cursor:pointer;font-size:14px;color:#e0d0e8;font-weight:600;font-family:inherit;transition:all .15s;box-shadow:0 0 40px rgba(170,102,221,0.2)}
+#forge-btn:active{transform:scale(0.92)}
+#forge-btn:disabled{opacity:0.4;cursor:not-allowed;transform:none}
+#forge-btn .sub{display:block;font-size:10px;font-weight:400;opacity:0.7;margin-top:4px}
+#tabs{display:flex;gap:4px;margin:10px 0 6px}
+.tab{flex:1;padding:7px;border-radius:8px 8px 0 0;background:rgba(170,102,221,0.05);border:1px solid rgba(170,102,221,0.1);border-bottom:none;text-align:center;font-size:11px;cursor:pointer;color:rgba(208,200,224,0.4);font-family:inherit;transition:all .2s}
+.tab.active{background:rgba(170,102,221,0.12);border-color:rgba(170,102,221,0.25);color:#e0d0e8}
+#panel{background:rgba(170,102,221,0.04);border:1px solid rgba(170,102,221,0.1);border-radius:0 0 12px 12px;padding:12px;min-height:180px}
+.panel{display:none}
+.panel.active{display:block}
+#elements-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.el-card{background:rgba(208,200,224,0.03);border:1px solid rgba(208,200,224,0.06);border-radius:8px;padding:8px 10px;display:flex;justify-content:space-between;align-items:center}
+.el-card .name{font-size:13px;font-weight:600}
+.el-card .count{font-size:15px;color:#cc88ee;font-weight:700}
+.el-card .cost{font-size:10px;color:rgba(208,200,224,0.3)}
+.el-card button{background:rgba(170,102,221,0.15);border:1px solid rgba(170,102,221,0.2);color:#e0d0e8;padding:4px 12px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;transition:all .2s}
+.el-card button:hover{background:rgba(170,102,221,0.25)}
+.el-card button:disabled{opacity:0.3;cursor:not-allowed}
+#stars-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.star-card{background:rgba(208,200,224,0.03);border:1px solid rgba(208,200,224,0.06);border-radius:8px;padding:8px 10px;text-align:center}
+.star-card .emoji{font-size:24px}
+.star-card .sname{font-size:12px;font-weight:600;margin:2px 0}
+.star-card .sreq{font-size:10px;color:rgba(208,200,224,0.3)}
+.star-card .sreq em{font-style:normal;color:#cc88ee}
+.star-card .count-badge{display:inline-block;background:rgba(170,102,221,0.2);padding:2px 8px;border-radius:10px;font-size:10px;margin-top:4px}
+.star-card.locked{opacity:0.35}
+.star-card button{background:linear-gradient(135deg,#aa66dd,#8833bb);border:none;color:#e0d0e8;padding:4px 16px;border-radius:6px;font-size:11px;cursor:pointer;margin-top:6px;font-family:inherit;transition:all .2s}
+.star-card button:hover{transform:translateY(-1px)}
+.star-card button:disabled{opacity:0.3;cursor:not-allowed;transform:none}
+#upgrades-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.upg-card{background:rgba(208,200,224,0.03);border:1px solid rgba(208,200,224,0.06);border-radius:8px;padding:8px 10px;display:flex;justify-content:space-between;align-items:center}
+.upg-card .uname{font-size:12px;font-weight:600}
+.upg-card .udesc{font-size:10px;color:rgba(208,200,224,0.3)}
+.upg-card .ulevel{font-size:10px;color:#cc88ee}
+.upg-card button{background:rgba(170,102,221,0.15);border:1px solid rgba(170,102,221,0.2);color:#e0d0e8;padding:4px 12px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit}
+.upg-card button:hover{background:rgba(170,102,221,0.25)}
+.upg-card button:disabled{opacity:0.3;cursor:not-allowed}
+#stats{display:flex;justify-content:center;gap:16px;font-size:11px;color:rgba(208,200,224,0.3);margin-top:8px;text-align:center}
+</style>
+  <script src="../bridge.js"></script>
+</head>
+<body>
+<div id="game">
+<h1>✦ <span>Arcane</span> Forge</h1>
+<div id="plasma-display">
+  <div id="plasma-count">0</div>
+  <div id="plasma-rate">+0 essence/s</div>
+</div>
+<button id="forge-btn">
+  🌟 CHANNEL
+  <span class="sub">+1 essence</span>
+</button>
+
+<div id="tabs">
+  <div class="tab active" data-tab="elements">🧪 Reagents</div>
+  <div class="tab" data-tab="stars">🔮 Artifacts</div>
+  <div class="tab" data-tab="upgrades">⚙️ Enchantments</div>
+</div>
+<div id="panel">
+  <div class="panel active" id="panel-elements"><div id="elements-grid"></div></div>
+  <div class="panel" id="panel-stars"><div id="stars-grid"></div></div>
+  <div class="panel" id="panel-upgrades"><div id="upgrades-grid"></div></div>
+</div>
+<div id="stats">
+  <div>Total Stars: <span id="total-stars">0</span></div>
+  <div>Forged: <span id="total-forged">0</span></div>
+</div>
+</div>
+
+<script>
+// ─── Audio ───
+let actx = null;
+function initA() { if(!actx) actx=new(window.AudioContext||window.webkitAudioContext)(); }
+function tone(f,d,t='sine',v=0.06){try{initA();let o=actx.createOscillator(),g=actx.createGain();o.type=t;o.frequency.value=f;g.gain.setValueAtTime(v,actx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,actx.currentTime+d);o.connect(g);g.connect(actx.destination);o.start();o.stop(actx.currentTime+d)}catch(e){}}
+function sfxClick(){tone(800,0.06,'sine',0.08)}
+function sfxBuy(){tone(600,0.1);setTimeout(()=>tone(800,0.1),60)}
+function sfxForge(){tone(300,0.2,'sawtooth',0.05);setTimeout(()=>tone(500,0.15,'sine',0.08),100);setTimeout(()=>tone(700,0.12,'sine',0.06),200)}
+
+// ─── Game Data ───
+const ELEMENTS = [
+  {id:'hydrogen',name:'Moon Dew',emoji:'💧',baseCost:10,costMult:1.15,baseRate:0.5},
+  {id:'helium',name:'Stardust',emoji:'✨',baseCost:30,costMult:1.2,baseRate:0.3},
+  {id:'carbon',name:'Crystal Shard',emoji:'💎',baseCost:80,costMult:1.25,baseRate:0.15},
+  {id:'oxygen',name:'Vapor Essence',emoji:'🫧',baseCost:200,costMult:1.3,baseRate:0.08},
+  {id:'iron',name:'Rune Metal',emoji:'⚙️',baseCost:500,costMult:1.35,baseRate:0.04},
+];
+
+const STAR_TYPES = [
+  {id:'red-dwarf',name:'Lesser Talisman',emoji:'🔴',reqs:{hydrogen:10,helium:5},boost:1.2,desc:'A basic protective charm'},
+  {id:'yellow-star',name:'Enchanted Ring',emoji:'🟡',reqs:{helium:8,carbon:5},boost:1.5,desc:'A ring of subtle power'},
+  {id:'blue-giant',name:'Arcane Staff',emoji:'🔵',reqs:{carbon:8,oxygen:6},boost:2.0,desc:'A staff crackling with energy'},
+  {id:'neutron-star',name:'Phoenix Amulet',emoji:'🔄',reqs:{oxygen:10,iron:4},boost:3.0,desc:'A pendant of ancient fire'},
+  {id:'white-dwarf',name:'Crystal Orb',emoji:'⚪',reqs:{helium:15,iron:8},boost:4.5,desc:'An orb of pure divination'},
+  {id:'red-giant',name:'Sorcerer Crown',emoji:'🔶',reqs:{hydrogen:25,carbon:12,iron:6},boost:7.0,desc:'A crown of immense authority'},
+  {id:'pulsar',name:'Elder Wand',emoji:'⚡',reqs:{neutron_star:2,iron:15},boost:12,desc:'A legendary artifact of untold power'},
+];
+
+const UPGRADES = [
+  {id:'plasma-press',name:'Essence Font',desc:'Click gives +1 extra essence',baseCost:50,costMult:1.4,maxLvl:10},
+  {id:'solar-wind',name:'Mystic Current',desc:'+20% essence generation',baseCost:100,costMult:1.5,maxLvl:10},
+  {id:'core-fusion',name:'Alchemical Circle',desc:'All reagents produce 25% faster',baseCost:200,costMult:1.6,maxLvl:8},
+  {id:'gravity-well',name:'Rune of Discount',desc:'Artifact costs 15% less',baseCost:500,costMult:1.7,maxLvl:5},
+  {id:'nova-burst',name:'Enchantment Echo',desc:'Artifacts give 30% more boost',baseCost:1000,costMult:2.0,maxLvl:5},
+];
+
+// ─── State ───
+const state = {
+  plasma: 0,
+  totalForged: 0,
+  elements: {},
+  stars: {},
+  upgrades: {},
+  unlockedStars: ['red-dwarf'],
+};
+
+ELEMENTS.forEach(e => state.elements[e.id] = 0);
+STAR_TYPES.forEach(s => { state.stars[s.id] = 0; });
+UPGRADES.forEach(u => state.upgrades[u.id] = 0);
+
+// ─── DOM ───
+const plasmaEl = document.getElementById('plasma-count');
+const rateEl = document.getElementById('plasma-rate');
+const forgeBtn = document.getElementById('forge-btn');
+const elementsGrid = document.getElementById('elements-grid');
+const starsGrid = document.getElementById('stars-grid');
+const upgradesGrid = document.getElementById('upgrades-grid');
+const totalStarsEl = document.getElementById('total-stars');
+const totalForgedEl = document.getElementById('total-forged');
+
+// ─── Tab Switching ───
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// ─── Helpers ───
+function getUpgradeLvl(id) { return state.upgrades[id] || 0; }
+function getClickPower() { return 1 + getUpgradeLvl('plasma-press'); }
+function getPlasmaMult() { return 1 + getUpgradeLvl('solar-wind') * 0.2; }
+function getElementSpeedMult() { return 1 + getUpgradeLvl('core-fusion') * 0.25; }
+function getForgeDiscount() { return 1 - getUpgradeLvl('gravity-well') * 0.15; }
+function getStarBoostMult() { return 1 + getUpgradeLvl('nova-burst') * 0.3; }
+
+function totalStarBoost() {
+  let boost = 1;
+  STAR_TYPES.forEach(s => {
+    const count = state.stars[s.id];
+    if (count > 0) boost += (s.boost - 1) * count * getStarBoostMult();
+  });
+  return boost;
+}
+
+function getElementCost(el) {
+  const e = ELEMENTS.find(x => x.id === el);
+  const lvl = state.elements[el];
+  return Math.floor(e.baseCost * Math.pow(e.costMult, lvl));
+}
+
+function getUpgradeCost(id) {
+  const u = UPGRADES.find(x => x.id === id);
+  const lvl = state.upgrades[id];
+  return Math.floor(u.baseCost * Math.pow(u.costMult, lvl));
+}
+
+// ─── Forge Click ───
+forgeBtn.addEventListener('click', () => {
+  state.plasma += getClickPower() * totalStarBoost();
+  state.totalForged++;
+  sfxClick();
+  updateUI();
+});
+
+// ─── Buy Element ───
+function buyElement(id) {
+  const cost = getElementCost(id);
+  if (state.plasma < cost) return;
+  state.plasma -= cost;
+  state.elements[id]++;
+  sfxBuy();
+  checkStarUnlocks();
+  updateUI();
+  autoSave();
+}
+
+// ─── Forge Star ───
+function forgeStar(id) {
+  const s = STAR_TYPES.find(x => x.id === id);
+  if (!s) return;
+  // Check if unlocked
+  if (!state.unlockedStars.includes(id)) return;
+  
+  // Check requirements
+  for (const [el, amt] of Object.entries(s.reqs)) {
+    const discounted = Math.ceil(amt * getForgeDiscount());
+    if (el.startsWith('neutron_star')) continue; // special check
+    const stateAmt = state.elements[el] || 0;
+    if (stateAmt < discounted) return;
+  }
+  
+  // Subtract elements
+  for (const [el, amt] of Object.entries(s.reqs)) {
+    if (el.startsWith('neutron_star')) continue;
+    const discounted = Math.ceil(amt * getForgeDiscount());
+    state.elements[el] -= discounted;
+  }
+  
+  state.stars[id]++;
+  sfxForge();
+  checkStarUnlocks();
+  updateUI();
+  autoSave();
+}
+
+// ─── Buy Upgrade ───
+function buyUpgrade(id) {
+  const u = UPGRADES.find(x => x.id === id);
+  const cost = getUpgradeCost(id);
+  if (state.plasma < cost) return;
+  if (state.upgrades[id] >= u.maxLvl) return;
+  state.plasma -= cost;
+  state.upgrades[id]++;
+  sfxBuy();
+  updateUI();
+  autoSave();
+}
+
+// ─── Check Star Unlocks ───
+function checkStarUnlocks() {
+  if (!state.unlockedStars.includes('yellow-star') && state.elements.helium >= 5 && state.elements.carbon >= 3) {
+    state.unlockedStars.push('yellow-star');
+  }
+  if (!state.unlockedStars.includes('blue-giant') && state.elements.carbon >= 5 && state.elements.oxygen >= 4) {
+    state.unlockedStars.push('blue-giant');
+  }
+  if (!state.unlockedStars.includes('neutron-star') && state.elements.oxygen >= 6 && state.elements.iron >= 3) {
+    state.unlockedStars.push('neutron-star');
+  }
+  if (!state.unlockedStars.includes('white-dwarf') && state.elements.helium >= 10 && state.elements.iron >= 5) {
+    state.unlockedStars.push('white-dwarf');
+  }
+  if (!state.unlockedStars.includes('red-giant') && state.elements.hydrogen >= 15 && state.elements.carbon >= 8 && state.elements.iron >= 4) {
+    state.unlockedStars.push('red-giant');
+  }
+  if (!state.unlockedStars.includes('pulsar') && state.stars['neutron-star'] >= 2 && state.elements.iron >= 10) {
+    state.unlockedStars.push('pulsar');
+  }
+}
+
+// ─── Auto Income ───
+setInterval(() => {
+  ELEMENTS.forEach(e => {
+    const rate = e.baseRate * state.elements[e.id] * getElementSpeedMult() * totalStarBoost();
+    state.plasma += rate * getPlasmaMult();
+  });
+  updateUI();
+}, 1000);
+
+// ─── Render ───
+function renderElements() {
+  elementsGrid.innerHTML = '';
+  ELEMENTS.forEach(e => {
+    const cost = getElementCost(e.id);
+    const card = document.createElement('div');
+    card.className = 'el-card';
+    card.innerHTML = `
+      <div>
+        <div class="name">${e.emoji} ${e.name}</div>
+        <div class="cost">Cost: ${Math.floor(cost)} plasma</div>
+      </div>
+      <div style="text-align:right">
+        <div class="count">${state.elements[e.id]}</div>
+        <button data-el="${e.id}" ${state.plasma < cost ? 'disabled' : ''}>Buy</button>
+      </div>`;
+    card.querySelector('button').addEventListener('click', () => buyElement(e.id));
+    elementsGrid.appendChild(card);
+  });
+}
+
+function renderStars() {
+  starsGrid.innerHTML = '';
+  STAR_TYPES.forEach(s => {
+    const unlocked = state.unlockedStars.includes(s.id);
+    const count = state.stars[s.id];
+    const canForge = unlocked && Object.entries(s.reqs).every(([el,amt]) => {
+      if (el === 'neutron_star') return state.stars['neutron-star'] >= 2; // special
+      const discounted = Math.ceil(amt * getForgeDiscount());
+      return (state.elements[el] || 0) >= discounted;
+    });
+    
+    const card = document.createElement('div');
+    card.className = 'star-card' + (unlocked ? '' : ' locked');
+    
+    let reqText = Object.entries(s.reqs).map(([el,amt]) => {
+      const discounted = Math.ceil(amt * getForgeDiscount());
+      const have = el === 'neutron_star' ? state.stars['neutron-star'] : (state.elements[el] || 0);
+      return `<em>${Math.floor(discounted)}</em> ${el.replace('_',' ')}`;
+    }).join(' · ');
+    
+    card.innerHTML = `
+      <div class="emoji">${s.emoji}</div>
+      <div class="sname">${s.name}</div>
+      <div class="sreq">${unlocked ? 'Requires: ' + reqText : '🔒 Locked'}</div>
+      <div class="count-badge">${count} forged</div>
+      ${unlocked ? `<button ${canForge ? '' : 'disabled'}>Forge</button>` : ''}`;
+    
+    if (unlocked) {
+      card.querySelector('button').addEventListener('click', () => forgeStar(s.id));
+    }
+    starsGrid.appendChild(card);
+  });
+}
+
+function renderUpgrades() {
+  upgradesGrid.innerHTML = '';
+  UPGRADES.forEach(u => {
+    const cost = getUpgradeCost(u.id);
+    const lvl = state.upgrades[u.id];
+    const maxed = lvl >= u.maxLvl;
+    const card = document.createElement('div');
+    card.className = 'upg-card';
+    card.innerHTML = `
+      <div>
+        <div class="uname">${u.name} <span class="ulevel">Lv.${lvl}/${u.maxLvl}</span></div>
+        <div class="udesc">${u.desc}</div>
+        <div class="udesc" style="color:rgba(255,255,255,0.15)">Cost: ${Math.floor(cost)} plasma</div>
+      </div>
+      <div>
+        <button ${(state.plasma < cost || maxed) ? 'disabled' : ''}>${maxed ? 'MAX' : 'Upgrade'}</button>
+      </div>`;
+    card.querySelector('button').addEventListener('click', () => buyUpgrade(u.id));
+    upgradesGrid.appendChild(card);
+  });
+}
+
+function updateUI() {
+  plasmaEl.textContent = Math.floor(state.plasma);
+  const totalStars = Object.values(state.stars).reduce((a,b) => a + b, 0);
+  totalStarsEl.textContent = totalStars;
+  totalForgedEl.textContent = state.totalForged;
+  
+  let rate = 0;
+  ELEMENTS.forEach(e => {
+    rate += e.baseRate * state.elements[e.id] * getElementSpeedMult() * totalStarBoost() * getPlasmaMult();
+  });
+  rateEl.textContent = '+' + rate.toFixed(1) + ' plasma/s';
+  
+  forgeBtn.querySelector('.sub').textContent = `+${(getClickPower() * totalStarBoost()).toFixed(1)} plasma`;
+  
+  renderElements();
+  renderStars();
+  renderUpgrades();
+}
+
+// ─── Save/Load ───
+function autoSave() {
+  if (!window.gameBridge) return;
+  clearTimeout(window.__svTimer);
+  window.__svTimer = setTimeout(() => {
+    window.gameBridge.save({
+      plasma: state.plasma,
+      totalForged: state.totalForged,
+      elements: state.elements,
+      stars: state.stars,
+      upgrades: state.upgrades,
+      unlockedStars: state.unlockedStars,
+    }).catch(() => {});
+  }, 1000);
+}
+
+async function loadGame() {
+  if (!window.gameBridge) return;
+  try {
+    const d = await window.gameBridge.load();
+    if (d) {
+      if (d.plasma !== undefined) state.plasma = d.plasma;
+      if (d.totalForged !== undefined) state.totalForged = d.totalForged;
+      if (d.elements) Object.assign(state.elements, d.elements);
+      if (d.stars) Object.assign(state.stars, d.stars);
+      if (d.upgrades) Object.assign(state.upgrades, d.upgrades);
+      if (d.unlockedStars) state.unlockedStars = d.unlockedStars;
+    }
+  } catch(e) {}
+  checkStarUnlocks();
+  updateUI();
+}
+
+window.__gameSaveData = () => ({
+  plasma: state.plasma, totalForged: state.totalForged,
+  elements: state.elements, stars: state.stars,
+  upgrades: state.upgrades, unlockedStars: state.unlockedStars,
+});
+window.__gameLoadData = (d) => {
+  if (!d) return;
+  if (d.plasma !== undefined) state.plasma = d.plasma;
+  if (d.totalForged !== undefined) state.totalForged = d.totalForged;
+  if (d.elements) Object.assign(state.elements, d.elements);
+  if (d.stars) Object.assign(state.stars, d.stars);
+  if (d.upgrades) Object.assign(state.upgrades, d.upgrades);
+  if (d.unlockedStars) state.unlockedStars = d.unlockedStars;
+  checkStarUnlocks();
+  updateUI();
+};
+
+loadGame();
+updateUI();
+</script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "id": "011-bauhaus-tetris",
+  "title": "Bauhaus Tetris",
+  "description": "Guideline Tetris with a museum-quality Bauhaus editorial aesthetic.",
+  "detailedDescription": "A meticulous recreation of classic guideline Tetris wrapped in the iconic visual language of the Bauhaus school. Every element â€” from the bold primary color palette and geometric Utopian typeface to the grid-based layout and sans-serif UI â€” pays homage to the design movement that shaped modernism. Features include next-piece preview, hold piece, ghost piece, 7-bag randomizer, and wall kicks. The score system follows guideline rules with soft and hard drops, T-spin detection, and combo tracking.",
+  "planetName": "Forma",
+  "solarSystemId": "alpha-centauri",
+  "solarSystemName": "Alpha Centauri",
+  "planetColor": "#e84040",
+  "planetSize": 1.0,
+  "orbitRadius": 15,
+  "orbitSpeed": 0.35,
+  "thumbnail": "thumbnail.svg",
+  "screenshots": [],
+  "difficulty": "Medium",
+  "controls": "Arrow Left/Right to move. Arrow Up to rotate. Arrow Down to soft drop. Spacebar to hard drop. C to hold piece. Clear lines to score.",
+  "genre": "Puzzle, Arcade, Retro",
+  "tags": ["puzzle", "arcade", "hosted"],
+  "characteristics": { "type": "rings", "ringColor": "#cc3333", "ringWidth": 0.5, "ringOpacity": 0.3, "ringCount": 2 },
+  "achievements": [
+    { "id": "first_clear", "title": "First Clear", "description": "Clear your first line", "icon": "star", "hidden": false },
+    { "id": "tetris", "title": "Tetris!", "description": "Clear four lines at once", "icon": "trophy", "hidden": false },
+    { "id": "centurion", "title": "Centurion", "description": "Clear 100 lines total", "icon": "star", "hidden": false }
+  ]
+}

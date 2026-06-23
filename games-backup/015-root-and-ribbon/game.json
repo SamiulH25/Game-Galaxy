@@ -1,0 +1,8 @@
+{
+  "id": "root-and-ribbon",
+  "title": "Root & Ribbon",
+  "description": "A calm linen-and-watercolor puzzle — guide soft water ribbons to awaken garden sprouts. No timers, infinite undo.",
+  "thumbnail": "thumbnail.svg",
+  "entry": "index.html",
+  "tags": ["puzzle", "casual", "relaxing", "hosted"]
+}

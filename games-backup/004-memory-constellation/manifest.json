@@ -1,0 +1,26 @@
+{
+  "id": "004-memory-constellation",
+  "title": "Memory Meadow",
+  "description": "Match the flowers blooming in a peaceful meadow. Three difficulty levels with timer tracking. A gentle memory game with garden charm.",
+  "detailedDescription": "Immerse yourself in a hand-painted meadow where memory cards bloom into flowers when matched. With three grid sizes (4x3, 4x4, 6x6), the game scales from a quick relaxing round to a genuine memory challenge. Each card features beautifully illustrated flora — poppies, daisies, lavender, bluebells, and more. Your completion time is tracked across sessions via save/load, and a calming ambient soundtrack shifts with the meadow's day cycle. No pressure, no penalties — just the simple joy of discovery.",
+  "planetName": "Memoria",
+  "solarSystemId": "andromeda",
+  "solarSystemName": "Andromeda",
+  "planetColor": "#66dd88",
+  "planetSize": 1.1,
+  "orbitRadius": 7,
+  "orbitSpeed": 0.35,
+  "thumbnail": "",
+  "screenshots": [],
+  "difficulty": "Easy",
+  "controls": "Click or tap any card to reveal its flower. Match two identical flowers to clear them from the board. Complete the board to win. Timer tracks your best time per difficulty.",
+  "genre": "Puzzle, Memory, Relaxing",
+  "tags": ["puzzle", "memory", "relaxing", "casual"],
+  "characteristics": {
+    "type": "rings",
+    "ringColor": "#66dd88",
+    "ringWidth": 0.4,
+    "ringOpacity": 0.35,
+    "ringCount": 2
+  }
+}

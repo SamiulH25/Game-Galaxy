@@ -1,0 +1,20 @@
+{
+  "id": "017-retro-archive",
+  "title": "Retro Archive",
+  "description": "A browser-based multi-system emulator for GBA, NES, SNES, GB, and GBC games. Drop a ROM to play retro classics in the browser.",
+  "detailedDescription": "A full-featured browser-based emulation hub supporting five classic systems: Game Boy, Game Boy Color, Game Boy Advance, NES, and SNES. Powered by EmulatorJS, the archive lets you drop ROM files directly into the browser or load them from your device's file system. Each system has accurate emulation with save states, rewind support, customizable controls, and screen filters (CRT scanlines, LCD ghosting, pixel-perfect). The interface is clean and retro-futuristic, with system-specific themes and a built-in ROM library manager. No server-side processing â€” everything runs locally in your browser.",
+  "planetName": "Retroia",
+  "solarSystemId": "retro-archive",
+  "solarSystemName": "Retro Archive",
+  "planetColor": "#ff4488",
+  "planetSize": 1.4,
+  "orbitRadius": 9,
+  "orbitSpeed": 0.4,
+  "thumbnail": "",
+  "screenshots": [],
+  "difficulty": "Easy",
+  "controls": "Select a system from the sidebar. Click 'Load ROM' and pick a .gba, .nes, .sfc, .gb, or .gbc file. Use keyboard or gamepad to play. Save states are managed through the emulator menu.",
+  "genre": "Emulator, Retro, Utility",
+  "tags": ["emulator", "retro", "gba", "nes", "snes", "utility"],
+  "characteristics": { "type": "moons", "moonCount": 2, "moonSize": 0.3, "moonOrbitRadius": 2.5, "moonColor": "#44ddff" }
+}

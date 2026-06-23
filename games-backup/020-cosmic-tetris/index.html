@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cosmic Tetris</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="game-wrapper">
+        <div class="game-container">
+            <div class="board-wrapper">
+                <canvas id="gameCanvas" width="300" height="600"></canvas>
+                <div class="game-over-overlay" id="gameOverOverlay">
+                    <div class="game-over-title">GAME OVER</div>
+                    <div class="game-over-score" id="finalScore">Score: 0</div>
+                    <button class="btn" onclick="game.restart()">Play Again</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="side-panel">
+            <div class="panel-box">
+                <div class="panel-title">Score</div>
+                <div class="stat-value score" id="scoreDisplay">0</div>
+            </div>
+
+            <div class="stats-row">
+                <div class="panel-box">
+                    <div class="panel-title">Level</div>
+                    <div class="stat-value" id="levelDisplay">1</div>
+                </div>
+                <div class="panel-box">
+                    <div class="panel-title">Lines</div>
+                    <div class="stat-value" id="linesDisplay">0</div>
+                </div>
+            </div>
+
+            <div class="panel-box">
+                <div class="panel-title">Next</div>
+                <canvas id="nextPieceCanvas" width="140" height="80"></canvas>
+            </div>
+
+            <div class="panel-box">
+                <div class="panel-title">Hold</div>
+                <canvas id="holdPieceCanvas" width="140" height="80"></canvas>
+            </div>
+
+            <div class="panel-box">
+                <div class="panel-title">Gravity</div>
+                <div class="gravity-indicator">
+                    <span class="gravity-arrow down" id="gravityArrow">▼</span>
+                    <span id="gravityLabel">Normal</span>
+                </div>
+                <div class="lines-progress" id="linesProgress">
+                    <div class="line-dot"></div>
+                    <div class="line-dot"></div>
+                    <div class="line-dot"></div>
+                    <div class="line-dot"></div>
+                    <div class="line-dot"></div>
+                    <div class="line-dot"></div>
+                    <div class="line-dot"></div>
+                    <div class="line-dot"></div>
+                    <div class="line-dot"></div>
+                    <div class="line-dot"></div>
+                </div>
+            </div>
+
+            <div class="panel-box">
+                <div class="panel-title">Power</div>
+                <div class="power-bar" id="powerBar">
+                    <div class="power-fill" id="powerFill" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="panel-box controls">
+                <span>←→</span> Move &nbsp; <span>↑</span> Rotate<br>
+                <span>↓</span> Soft Drop &nbsp; <span>Space</span> Hard Drop<br>
+                <span>C</span> Hold &nbsp; <span>Z</span> Rotate CCW<br>
+                <span>Shift</span> Power
+            </div>
+        </div>
+    </div>
+
+    <div class="notification" id="notification"></div>
+
+    <script src="game.js"></script>
+</body>
+</html>

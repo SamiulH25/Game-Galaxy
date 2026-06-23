@@ -1,0 +1,26 @@
+{
+  "id": "000-template-game",
+  "title": "Template Game",
+  "description": "A basic game template for Game Galaxy. Replace this with your game description.",
+  "detailedDescription": "This is a starter template for creating new games in the Game Galaxy platform. It includes the basic structure needed for a game to be loaded and displayed correctly. Replace the content with your actual game.",
+  "planetName": "Template World",
+  "solarSystemId": "alpha-centauri",
+  "solarSystemName": "Alpha Centauri",
+  "planetColor": "#666666",
+  "planetSize": 1.0,
+  "orbitRadius": 5,
+  "orbitSpeed": 0.5,
+  "thumbnail": "",
+  "screenshots": [],
+  "difficulty": "Easy",
+  "controls": "Game controls will go here",
+  "genre": "Template",
+  "tags": ["template", "starter"],
+  "characteristics": {
+    "type": "rings",
+    "ringColor": "#666666",
+    "ringWidth": 0.5,
+    "ringOpacity": 0.5,
+    "ringCount": 1
+  }
+}

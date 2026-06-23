@@ -1,0 +1,26 @@
+{
+  "id": "021-void-voyager",
+  "title": "Void Voyager",
+  "description": "Pilot your ship through the void, collecting energy crystals and surviving the darkness.",
+  "detailedDescription": "Navigate a 3D void filled with floating energy crystals, deadly asteroids, and hostile drones. Collect crystals to charge your escape drive while avoiding collisions. Reach 1000 energy to breach the void and escape. Features WebGL2 3D graphics, particle effects, power-ups, and progressive difficulty.",
+  "planetName": "Abyssia",
+  "solarSystemId": "alpha-centauri",
+  "solarSystemName": "Alpha Centauri",
+  "planetColor": "#2A4858",
+  "planetSize": 1.6,
+  "orbitRadius": 7,
+  "orbitSpeed": 0.4,
+  "thumbnail": "",
+  "screenshots": [],
+  "difficulty": "Medium",
+  "controls": "WASD to move. Mouse to aim. Click or Space to shoot. Collect crystals, avoid enemies.",
+  "genre": "Action, 3D, Survival",
+  "tags": ["3d", "webgl", "space", "survival"],
+  "characteristics": {
+    "type": "rings",
+    "ringColor": "#2A4858",
+    "ringWidth": 0.7,
+    "ringOpacity": 0.5,
+    "ringCount": 2
+  }
+}

@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mosaic Puzzle</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:linear-gradient(135deg,#0f0d08,#1a1510,#0f0d08);font-family:'Segoe UI',sans-serif;color:#d8d0c8;min-height:100vh;display:flex;justify-content:center;align-items:center;overflow:hidden}
+#game{width:100%;max-width:520px;padding:16px;text-align:center}
+h1{font-size:20px;font-weight:300;letter-spacing:3px}
+h1 span{color:#ddaa66;font-weight:700}
+#stats{display:flex;justify-content:center;gap:16px;margin:6px 0;font-size:12px;color:rgba(216,208,200,0.35)}
+#stats em{font-style:normal;color:#ddaa66;font-weight:600}
+#mode-bar{display:flex;gap:6px;justify-content:center;margin-bottom:6px}
+.mode-btn{background:rgba(221,170,102,0.06);border:1px solid rgba(221,170,102,0.1);color:rgba(216,208,200,0.4);padding:4px 14px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;transition:all.2s}
+.mode-btn.active{background:rgba(221,170,102,0.18);border-color:#ddaa66;color:#e0d8d0}
+.mode-btn:hover{background:rgba(221,170,102,0.12)}
+#sizes{display:flex;gap:6px;justify-content:center;margin-bottom:8px}
+.size-btn{background:rgba(221,170,102,0.08);border:1px solid rgba(221,170,102,0.15);color:rgba(216,208,200,0.5);padding:4px 14px;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit;transition:all.2s}
+.size-btn:hover{background:rgba(221,170,102,0.15)}
+.size-btn.active{background:rgba(221,170,102,0.2);border-color:#ddaa66;color:#e0d8d0}
+#puzzle-container{position:relative;width:100%;max-width:380px;margin:0 auto;aspect-ratio:1;background:rgba(216,208,200,0.02);border-radius:12px;overflow:hidden;border:2px solid rgba(221,170,102,0.12)}
+#puzzle-canvas{width:100%;height:100%;display:block;cursor:pointer}
+#toolbar{display:flex;gap:8px;justify-content:center;margin-top:8px;flex-wrap:wrap}
+.tool-btn{background:rgba(221,170,102,0.08);border:1px solid rgba(221,170,102,0.15);color:rgba(216,208,200,0.6);padding:5px 14px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;transition:all.2s;display:flex;align-items:center;gap:4px}
+.tool-btn:hover{background:rgba(221,170,102,0.15);color:#e0d8d0}
+#overlay{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(10,8,6,0.85);border-radius:12px;opacity:0;pointer-events:none;transition:opacity.5s}
+#overlay.show{opacity:1;pointer-events:auto}
+#overlay h2{font-size:26px;color:#ddaa66;text-shadow:0 0 30px rgba(221,170,102,0.3)}
+#overlay .stars{font-size:28px;margin:4px 0}
+#overlay p{font-size:13px;color:rgba(216,208,200,0.5);margin:2px 0}
+#overlay button{background:linear-gradient(135deg,#ddaa66,#bb8844);border:none;color:#0f0d08;padding:8px 24px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:8px;transition:all.2s}
+#overlay button:hover{transform:translateY(-2px);box-shadow:0 4px 20px rgba(221,170,102,0.4)}
+#hint{font-size:10px;color:rgba(216,208,200,0.15);margin-top:6px}
+</style>
+  <script src="../bridge.js"></script>
+</head>
+<body>
+<div id="game">
+<h1>✦ <span>Mosaic</span> Puzzle</h1>
+<div id="mode-bar">
+  <button class="mode-btn active" data-mode="standard">🎯 Standard</button>
+  <button class="mode-btn" data-mode="timeattack">⏱️ Time Attack</button>
+</div>
+<div id="stats">
+  <span>Moves: <em id="moves">0</em></span>
+  <span>Time: <em id="timer">0s</em></span>
+  <span>Best: <em id="best">—</em></span>
+  <span id="rating-display" style="display:none">⭐ <em id="rating">0</em>/3</span>
+</div>
+<div id="sizes">
+  <button class="size-btn active" data-n="3">3×3</button>
+  <button class="size-btn" data-n="4">4×4</button>
+  <button class="size-btn" data-n="5">5×5</button>
+</div>
+<div id="puzzle-container">
+  <canvas id="puzzle-canvas"></canvas>
+  <div id="overlay">
+    <h2 id="overlay-title">✨ Complete!</h2>
+    <div class="stars" id="overlay-stars"></div>
+    <p id="overlay-msg"></p>
+    <button id="overlay-btn">New Puzzle</button>
+  </div>
+</div>
+<div id="toolbar">
+  <button class="tool-btn" id="preview-btn">👁️ Preview</button>
+  <button class="tool-btn" id="new-btn">🔄 New Mosaic</button>
+</div>
+<div id="hint">Click tiles adjacent to the gap to slide · Preview shows the full artwork</div>
+</div>
+
+<script>
+// ─── Audio ───
+let actx=null;
+function ia(){if(!actx)actx=new(window.AudioContext||window.webkitAudioContext)()}
+function tn(f,d,t='sine',v=0.06){try{ia();let o=actx.createOscillator(),g=actx.createGain();o.type=t;o.frequency.value=f;g.gain.setValueAtTime(v,actx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,actx.currentTime+d);o.connect(g);g.connect(actx.destination);o.start();o.stop(actx.currentTime+d)}catch(e){}}
+function sfxSlide(){tn(500,0.06,'sine',0.05)}
+function sfxWin(){[0,100,200,300,400].forEach((d,i)=>setTimeout(()=>tn(440+i*110,0.2,'sine',0.08),d))}
+function sfxPreview(){tn(600,0.08,'sine',0.05);setTimeout(()=>tn(800,0.08,'sine',0.04),80)}
+
+// ─── Canvas ───
+const canvas=document.getElementById('puzzle-canvas');
+const ctx=canvas.getContext('2d');
+
+// ─── State ───
+let N=3,tiles=[],emptyIdx=-1,moves=0,timer=0,ti=null,solved=false,bestScores={},nebulaSeed=0;
+let mode='standard',timeLimit=0,rating=0,animating=false,preview=false,previewTimer=null;
+
+// ─── DOM ───
+const movesEl=document.getElementById('moves');
+const timerEl=document.getElementById('timer');
+const bestEl=document.getElementById('best');
+const overlay=document.getElementById('overlay');
+const overlayTitle=document.getElementById('overlay-title');
+const overlayStars=document.getElementById('overlay-stars');
+const overlayMsg=document.getElementById('overlay-msg');
+const ratingDisplay=document.getElementById('rating-display');
+const ratingEl=document.getElementById('rating');
+
+// ─── Generate Mosaic ───
+function generateMosaic(w,h,seed){
+  const c=document.createElement('canvas');
+  c.width=w;c.height=h;
+  const cx=c.getContext('2d');
+  
+  // Warm clay background
+  cx.fillStyle='#f0e6d0';cx.fillRect(0,0,w,h);
+  
+  // Tile grid overlay with varied colors
+  const tileSize=Math.max(w,h)/12;
+  const palette=['#ddaa66','#bb8844','#99aa77','#7799bb','#cc8877','#88aa99','#bb7799','#aabb88'];
+  for(let y=0;y<h;y+=tileSize*2){
+    for(let x=0;x<w;x+=tileSize*2){
+      const pi=((x*7+y*13+seed*3))%palette.length;
+      const alpha=0.3+((x*11+y*7)%20)*0.025;
+      cx.fillStyle=palette[pi]+Math.round(alpha*255).toString(16).padStart(2,'0');
+      cx.fillRect(x,y,tileSize*1.8,tileSize*1.8);
+    }
+  }
+  
+  // Geometric shapes overlay
+  for(let i=0;i<15;i++){
+    const sx=(i*83.7+seed*5.3)%w;
+    const sy=(i*61.3+seed*7.1)%h;
+    const sz=10+((i*17)%50);
+    const pi2=((i*23+seed*7))%palette.length;
+    const rot=(i*31+seed)*0.02;
+    cx.save();cx.translate(sx,sy);cx.rotate(rot);
+    cx.fillStyle=palette[pi2]+'40';
+    if(i%3===0){
+      // Circle
+      cx.beginPath();cx.arc(0,0,sz/2,0,Math.PI*2);cx.fill();
+    }else if(i%3===1){
+      // Triangle
+      cx.beginPath();for(let t=0;t<3;t++){const a=t*Math.PI*2/3-Math.PI/2;const r=sz/2;t===0?cx.moveTo(Math.cos(a)*r,Math.sin(a)*r):cx.lineTo(Math.cos(a)*r,Math.sin(a)*r);}cx.closePath();cx.fill();
+    }else{
+      // Diamond
+      cx.beginPath();cx.moveTo(0,-sz/2);cx.lineTo(sz/2,0);cx.lineTo(0,sz/2);cx.lineTo(-sz/2,0);cx.closePath();cx.fill();
+    }
+    cx.restore();
+  }
+  
+  // Decorative lines
+  for(let i=0;i<10;i++){
+    const lx=(i*137.5+seed*3)%w;
+    const ly=(i*89.3+seed*11)%h;
+    cx.strokeStyle=palette[i%palette.length]+'30';
+    cx.lineWidth=1.5;
+    cx.beginPath();cx.moveTo(lx,0);cx.lineTo(lx+Math.sin(i*2.3)*30,h);cx.stroke();
+  }
+  
+  return c;
+}
+
+// ─── Init ───
+function initPuzzle(size){
+  N=size;solved=false;preview=false;
+  overlay.classList.remove('show');
+  clearInterval(ti);ti=null;
+  if(previewTimer){clearTimeout(previewTimer);previewTimer=null;}
+  
+  nebulaSeed=Math.floor(Math.random()*1000);
+  const total=N*N;
+  tiles=Array.from({length:total},(_,i)=>i);
+  emptyIdx=total-1;tiles[emptyIdx]=-1;
+  shufflePuzzle(100+total*20);
+  moves=0;timer=0;rating=0;animating=true;
+  movesEl.textContent='0';timerEl.textContent='0s';
+  
+  if(mode==='timeattack')timeLimit=60;else timeLimit=0;
+  ratingDisplay.style.display='none';
+  updateBestDisplay();
+  
+  // Animate scramble
+  animating=true;
+  setTimeout(()=>{animating=false;},500);
+  render();
+}
+
+function shufflePuzzle(iterations){
+  for(let i=0;i<iterations;i++){
+    const ns=getNeighbors(emptyIdx);
+    const pick=ns[Math.floor(Math.random()*ns.length)];
+    tiles[emptyIdx]=tiles[pick];tiles[pick]=-1;emptyIdx=pick;
+  }
+  if(isSolved())shufflePuzzle(50);
+}
+
+function getNeighbors(idx){
+  const r=Math.floor(idx/N),c=idx%N,n=[];
+  if(r>0)n.push(idx-N);if(r<N-1)n.push(idx+N);
+  if(c>0)n.push(idx-1);if(c<N-1)n.push(idx+1);
+  return n;
+}
+
+function isSolved(){
+  for(let i=0;i<tiles.length-1;i++){if(tiles[i]!==i)return false;}
+  return true;
+}
+
+// ─── Click ───
+function handleClick(clientX,clientY){
+  if(solved||animating||preview)return;
+  const rect=canvas.getBoundingClientRect();
+  const size=rect.width,cellSize=size/N;
+  const col=Math.floor((clientX-rect.left)/cellSize);
+  const row=Math.floor((clientY-rect.top)/cellSize);
+  const idx=row*N+col;
+  if(idx===emptyIdx||!getNeighbors(emptyIdx).includes(idx))return;
+  
+  tiles[emptyIdx]=tiles[idx];tiles[idx]=-1;emptyIdx=idx;
+  moves++;
+  movesEl.textContent=moves;
+  sfxSlide();
+  
+  if(!ti){
+    ti=setInterval(()=>{
+      timer++;
+      timerEl.textContent=timer+'s';
+      if(mode==='timeattack'&&timer>=timeLimit&&!solved){
+        clearInterval(ti);ti=null;
+        gameLost();
+      }
+    },1000);
+  }
+  
+  render();
+  if(isSolved())gameWon();
+}
+
+function gameWon(){
+  solved=true;clearInterval(ti);
+  sfxWin();
+  
+  const minMoves={3:8,4:25,5:50}[N]||15;
+  const ratio=moves/minMoves;
+  rating=ratio<=1?3:ratio<=1.5?2:1;
+  ratingDisplay.style.display='inline';
+  ratingEl.textContent=rating;
+  
+  const stars='⭐'.repeat(rating)+'☆'.repeat(3-rating);
+  overlayStars.textContent=stars;
+  
+  if(mode==='timeattack'){
+    const bonus=Math.max(0,timeLimit-timer);
+    overlayTitle.textContent='⏱️ Time Escape!';
+    overlayMsg.textContent=`Solved in ${moves} moves, ${timer}s — ${bonus}s bonus!`;
+  }else{
+    overlayTitle.textContent='✨ Mosaic Complete!';
+    overlayMsg.textContent=`${moves} moves in ${timer}s — ${rating}/3 stars`;
+  }
+  overlay.classList.add('show');
+  
+  const key=`${mode}_n${N}`;
+  const prev=bestScores[key];
+  if(!prev||moves<prev.moves){
+    bestScores[key]={moves,time:timer,rating};
+    updateBestDisplay();
+    if(window.gameBridge)window.gameBridge.save({bestScores}).catch(()=>{});
+  }
+}
+
+function gameLost(){
+  solved=true;
+  overlayTitle.textContent='⏱️ Time\'s Up!';
+  overlayStars.textContent='💫';
+  overlayMsg.textContent=`${moves} moves placed — try again!`;
+  overlay.classList.add('show');
+}
+
+// ─── Preview ───
+function togglePreview(){
+  if(solved||animating)return;
+  preview=!preview;
+  sfxPreview();
+  if(preview){
+    document.getElementById('preview-btn').textContent='👁️ Hide';
+    if(previewTimer)clearTimeout(previewTimer);
+    previewTimer=setTimeout(()=>{
+      preview=false;
+      document.getElementById('preview-btn').textContent='👁️ Preview';
+      render();
+    },3000);
+  }else{
+    document.getElementById('preview-btn').textContent='👁️ Preview';
+    if(previewTimer)clearTimeout(previewTimer);
+  }
+  render();
+}
+
+// ─── Render ───
+function render(){
+  const rect=canvas.parentElement.getBoundingClientRect();
+  const dpr=window.devicePixelRatio||1;
+  const dispW=rect.width;
+  canvas.style.width=dispW+'px';canvas.style.height=dispW+'px';
+  canvas.width=dispW*dpr;canvas.height=dispW*dpr;
+  ctx.scale(dpr,dpr);
+  
+  const cellSize=dispW/N;
+  const nebula=generateMosaic(dispW*dpr,dispW*dpr,nebulaSeed);
+  
+  if(preview){
+    // Draw full image
+    ctx.drawImage(nebula,0,0,dispW,dispW);
+    ctx.fillStyle='rgba(255,136,204,0.3)';
+    ctx.font='16px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('🔍 Preview',dispW/2,dispW-20);
+    return;
+  }
+  
+  for(let i=0;i<tiles.length;i++){
+    const val=tiles[i];
+    const row=Math.floor(i/N),col=i%N;
+    const x=col*cellSize,y=row*cellSize;
+    
+    if(val===-1){
+      ctx.fillStyle='rgba(0,0,0,0.4)';
+      ctx.fillRect(x,y,cellSize,cellSize);
+      continue;
+    }
+    
+    const srcRow=Math.floor(val/N),srcCol=val%N;
+    ctx.drawImage(nebula,srcCol*(dispW*dpr/N),srcRow*(dispW*dpr/N),
+      dispW*dpr/N,dispW*dpr/N,x,y,cellSize,cellSize);
+    ctx.strokeStyle='rgba(255,255,255,0.06)';
+    ctx.lineWidth=0.5;
+    ctx.strokeRect(x,y,cellSize,cellSize);
+    
+    // Subdued number
+    ctx.fillStyle='rgba(255,255,255,0.1)';
+    ctx.font=`${cellSize*0.14}px sans-serif`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(val+1,x+cellSize/2,y+cellSize/2);
+  }
+  
+  // Empty space subtle pattern
+  ctx.fillStyle='rgba(255,136,204,0.03)';
+  ctx.fillRect((emptyIdx%N)*cellSize,Math.floor(emptyIdx/N)*cellSize,cellSize,cellSize);
+}
+
+function updateBestDisplay(){
+  const key=`${mode}_n${N}`;
+  if(bestScores[key]){
+    bestEl.textContent=`${bestScores[key].moves} moves`;
+    ratingDisplay.style.display='inline';
+    ratingEl.textContent=bestScores[key].rating||'—';
+  }else{
+    bestEl.textContent='—';
+    ratingDisplay.style.display='none';
+  }
+}
+
+// ─── Events ───
+canvas.addEventListener('click',e=>{
+  const rect=canvas.getBoundingClientRect();
+  handleClick(e.clientX-rect.left+rect.left,e.clientY-rect.top+rect.top);
+});
+
+document.querySelectorAll('.size-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.size-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    initPuzzle(parseInt(btn.dataset.n));
+  });
+});
+
+document.querySelectorAll('.mode-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    mode=btn.dataset.mode;
+    document.getElementById('rating-display').style.display='none';
+    const activeSize=document.querySelector('.size-btn.active');
+    initPuzzle(parseInt(activeSize?activeSize.dataset.n:3));
+  });
+});
+
+document.getElementById('new-btn').addEventListener('click',()=>{
+  const activeSize=document.querySelector('.size-btn.active');
+  initPuzzle(parseInt(activeSize?activeSize.dataset.n:3));
+});
+document.getElementById('overlay-btn').addEventListener('click',()=>{
+  const activeSize=document.querySelector('.size-btn.active');
+  initPuzzle(parseInt(activeSize?activeSize.dataset.n:3));
+});
+document.getElementById('preview-btn').addEventListener('click',togglePreview);
+window.addEventListener('resize',render);
+
+// ─── Save/Load ───
+async function loadScores(){
+  if(!window.gameBridge)return;
+  try{const d=await window.gameBridge.load();if(d&&d.bestScores)bestScores=d.bestScores;}catch(e){}
+  updateBestDisplay();
+}
+window.__gameSaveData=()=>({bestScores});
+window.__gameLoadData=(d)=>{if(d&&d.bestScores){bestScores=d.bestScores;updateBestDisplay()}};
+
+loadScores();
+initPuzzle(3);
+</script>
+</body>
+</html>

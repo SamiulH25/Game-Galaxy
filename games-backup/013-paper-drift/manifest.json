@@ -1,0 +1,20 @@
+{
+  "id": "013-paper-drift",
+  "title": "Paper Drift",
+  "description": "Fold an origami boat down a watercolor river â€” dodge ink, dry in sunbeams, and survive the current.",
+  "detailedDescription": "A gentle hand-crafted river journey piloted by an origami boat. Navigate through a watercolor world where every drop of ink is an obstacle and every sunbeam is a chance to dry. The river carries you forward automatically â€” tilt to steer left and right, dodging ink spills that weigh down your paper hull and seeking sunbeams that keep you afloat. The world is built from layered watercolor textures with visible brush strokes, paper grain, and bleeding edges. Each run generates a new river layout with unique ink patterns and sunbeam placements.",
+  "planetName": "Origami",
+  "solarSystemId": "lyra",
+  "solarSystemName": "Lyra",
+  "planetColor": "#66bbee",
+  "planetSize": 0.9,
+  "orbitRadius": 15,
+  "orbitSpeed": 0.4,
+  "thumbnail": "thumbnail.svg",
+  "screenshots": [],
+  "difficulty": "Medium",
+  "controls": "A/D or Arrow Left/Right to steer. Collect sunbeams to stay dry. Avoid ink spills. Survive the river as long as possible.",
+  "genre": "Arcade, Casual, Artistic",
+  "tags": ["arcade", "casual", "hosted"],
+  "characteristics": { "type": "moons", "moonCount": 2, "moonSize": 0.1, "moonOrbitRadius": 2.0, "moonColor": "#88ddff" }
+}

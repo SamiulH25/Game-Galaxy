@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Bauhaus Tetris</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; margin: 0; background: #020617; font-family: 'DM Sans', system-ui, sans-serif; }
+    body.dark { background: #020617; color: #F0EBE0; }
+    canvas#game { display: block; position: absolute; left: 0; top: 0; touch-action: none; }
+    .touch-bar { display: none; position: fixed; bottom: 0; left: 0; right: 0; padding: 8px; gap: 8px; background: rgba(26,22,18,0.92); z-index: 100; }
+    body.dark .touch-bar { background: rgba(245,240,232,0.1); }
+    .touch-bar button { flex: 1; padding: 14px 8px; border: 1px solid #D8D0C0; background: transparent; color: #F5F0E8; font-family: 'DM Sans', sans-serif; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; touch-action: manipulation; }
+    .touch-bar button:active { background: rgba(245,240,232,0.15); }
+    @media (max-width: 640px) { .touch-bar { display: flex; } }
+    svg#grain-filter { position: absolute; width: 0; height: 0; }
+  </style>
+  <script src="../bridge.js"></script>
+  <svg id="grain-filter" aria-hidden="true">
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" stitchTiles="stitch" />
+      <feColorMatrix type="saturate" values="0" />
+      <feBlend in="SourceGraphic" mode="multiply" />
+    </filter>
+  </svg>
+</head>
+<body>
+  <canvas id="game" tabindex="0" aria-label="Bauhaus Tetris"></canvas>
+  <div class="touch-bar" id="touch-bar">
+    <button type="button" data-act="left">◀</button>
+    <button type="button" data-act="rotL">↺</button>
+    <button type="button" data-act="down">▼</button>
+    <button type="button" data-act="rotR">↻</button>
+    <button type="button" data-act="right">▶</button>
+    <button type="button" data-act="drop">⤓</button>
+  </div>
+  <script>
+'use strict';
+
+const CONFIG = {
+  PAD: 16,
+  GAP: 1,
+  SIDEBAR_W: 180,
+  COLS: 10, ROWS: 20, VISIBLE_ROWS: 20,
+  CELL: 24,
+  CELL_W: 24, CELL_H: 24,
+  BOARD_X: 0, BOARD_Y: 0, SIDEBAR_X: 0, W: 800, H: 600,
+  FPS: 60, FIXED_DT: 1000 / 60,
+  ARE_MS: 100,
+  LOCK_DELAY_MS: 500,
+  LOCK_DELAY_SOFT_MS: 50,
+  MAX_LOCK_RESETS: 15,
+  LINE_CLEAR_MS: 180,
+  DROP_TRAIL_MS: 250,
+  LOCK_FLASH_MS: 80,
+  LEVEL_OVERLAY_MS: 800,
+  TETRIS_SHAKE_MS: 200,
+  EASE: 'cubic-bezier(0.25,0.46,0.45,0.94)',
+  COLORS: {
+    bg: '#F5F0E8', ink: '#1A1612', grid: '#D8D0C0',
+    ghost: 'rgba(26,22,18,0.08)',
+    pieces: ['#C4937A','#6E8FA3','#7A9B7C','#C8A96E','#B36B5A','#8B7FA8','#5A5A5A'],
+    dark: { bg: '#1A1612', ink: '#F0EBE0', grid: '#2A2620' }
+  },
+  PIECES: ['I','J','L','O','S','T','Z'],
+  SHAPES: {
+    I: [[[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],[[0,0,1,0],[0,0,1,0],[0,0,1,0],[0,0,1,0]],[[0,0,0,0],[0,0,0,0],[1,1,1,1],[0,0,0,0]],[[0,1,0,0],[0,1,0,0],[0,1,0,0],[0,1,0,0]]],
+    J: [[[1,0,0],[1,1,1],[0,0,0]],[[0,1,1],[0,1,0],[0,1,0]],[[0,0,0],[1,1,1],[0,0,1]],[[0,1,0],[0,1,0],[1,1,0]]],
+    L: [[[0,0,1],[1,1,1],[0,0,0]],[[0,1,0],[0,1,0],[0,1,1]],[[0,0,0],[1,1,1],[1,0,0]],[[1,1,0],[0,1,0],[0,1,0]]],
+    O: [[[1,1],[1,1]],[[1,1],[1,1]],[[1,1],[1,1]],[[1,1],[1,1]]],
+    S: [[[0,1,1],[1,1,0],[0,0,0]],[[0,1,0],[0,1,1],[0,0,1]],[[0,0,0],[0,1,1],[1,1,0]],[[1,0,0],[1,1,0],[0,1,0]]],
+    T: [[[0,1,0],[1,1,1],[0,0,0]],[[0,1,0],[0,1,1],[0,1,0]],[[0,0,0],[1,1,1],[0,1,0]],[[0,1,0],[1,1,0],[0,1,0]]],
+    Z: [[[1,1,0],[0,1,1],[0,0,0]],[[0,0,1],[0,1,1],[0,1,0]],[[0,0,0],[1,1,0],[0,1,1]],[[0,1,0],[1,1,0],[1,0,0]]]
+  },
+  KICKS_JLSTZ: {
+    '0>1':[[0,0],[-1,0],[-1,1],[0,-2],[-1,-2]],'1>0':[[0,0],[1,0],[1,-1],[0,2],[1,2]],
+    '1>2':[[0,0],[1,0],[1,-1],[0,2],[1,2]],'2>1':[[0,0],[-1,0],[-1,1],[0,-2],[-1,-2]],
+    '2>3':[[0,0],[1,0],[1,1],[0,-2],[1,-2]],'3>2':[[0,0],[-1,0],[-1,-1],[0,2],[-1,2]],
+    '3>0':[[0,0],[-1,0],[-1,1],[0,-2],[-1,-2]],'0>3':[[0,0],[1,0],[1,-1],[0,2],[1,2]]
+  },
+  KICKS_I: {
+    '0>1':[[0,0],[-2,0],[1,0],[-2,-1],[1,2]],'1>0':[[0,0],[2,0],[-1,0],[2,1],[-1,-2]],
+    '1>2':[[0,0],[-1,0],[2,0],[-1,2],[2,-1]],'2>1':[[0,0],[1,0],[-2,0],[1,-2],[-2,1]],
+    '2>3':[[0,0],[2,0],[-1,0],[2,1],[-1,-2]],'3>2':[[0,0],[-2,0],[1,0],[-2,-1],[1,2]],
+    '3>0':[[0,0],[1,0],[-2,0],[1,-2],[-2,1]],'0>3':[[0,0],[-1,0],[2,0],[-1,2],[2,-1]]
+  },
+  GRAVITY: [0,48,43,38,33,28,23,18,13,8,6,5,5,4,4,3,3,3,2,2,2,2,2,2,1,1,1,1,1,1],
+  DAS_DEFAULT: 170, ARR_DEFAULT: 50,
+  LS_SCORES: 'bauhaus-tetris-scores',
+  LS_SETTINGS: 'bauhaus-tetris-settings',
+  LS_DARK: 'bauhaus-tetris-dark'
+};
+
+function gridPitchX() { return CONFIG.CELL_W + CONFIG.GAP; }
+function gridPitchY() { return CONFIG.CELL_H + CONFIG.GAP; }
+
+function getBoardRect() {
+  const x0 = CONFIG.BOARD_X;
+  const y0 = CONFIG.BOARD_Y;
+  const w = CONFIG.COLS * CONFIG.CELL_W + CONFIG.GAP * (CONFIG.COLS - 1);
+  const h = (CONFIG.ROWS - 1) * gridPitchY() + CONFIG.CELL_H;
+  return { x: x0, y: y0, w, h };
+}
+
+function boardCellXY(col, row) {
+  const b = getBoardRect();
+  return [b.x + col * gridPitchX(), b.y + row * gridPitchY()];
+}
+
+function playfieldBottom() {
+  const b = getBoardRect();
+  return b.y + b.h;
+}
+
+function resizeLayout(canvas) {
+  const bar = document.getElementById('touch-bar');
+  const barH = bar && window.getComputedStyle(bar).display !== 'none' ? bar.offsetHeight : 0;
+  const W = Math.max(320, window.innerWidth);
+  const H = Math.max(360, window.innerHeight - barH);
+
+  const pad = Math.max(8, Math.round(Math.min(W, H) * 0.018));
+  const sidebarW = Math.round(Math.clamp(W * 0.24, 130, 210));
+  const innerW = W - pad * 2;
+  const innerH = H - pad * 2;
+  const boardSlotW = innerW - sidebarW - pad;
+  const g = 1;
+
+  const cellFromH = (innerH - g * (CONFIG.ROWS - 1)) / CONFIG.ROWS;
+  const cellFromW = (boardSlotW - g * (CONFIG.COLS - 1)) / CONFIG.COLS;
+  const cell = Math.max(12, Math.floor(Math.min(cellFromH, cellFromW) * 100) / 100);
+
+  CONFIG.GAP = g;
+  CONFIG.PAD = pad;
+  CONFIG.SIDEBAR_W = sidebarW;
+  CONFIG.CELL_W = cell;
+  CONFIG.CELL_H = cell;
+  CONFIG.CELL = cell;
+
+  const gridW = CONFIG.COLS * cell + g * (CONFIG.COLS - 1);
+  const gridH = (CONFIG.ROWS - 1) * (cell + g) + cell;
+
+  CONFIG.BOARD_X = pad + (boardSlotW - gridW) / 2;
+  CONFIG.BOARD_Y = pad + innerH - gridH;
+  CONFIG.SIDEBAR_X = pad + boardSlotW + pad;
+  CONFIG.W = W;
+  CONFIG.H = H;
+
+  canvas.width = W;
+  canvas.height = H;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+}
+
+Math.clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+const SPAWN = { I:{x:3,y:-1}, J:{x:3,y:0}, L:{x:3,y:0}, O:{x:4,y:0}, S:{x:3,y:0}, T:{x:3,y:0}, Z:{x:3,y:0} };
+
+class BagRandomizer {
+  constructor() { this.bag = []; this.history = []; }
+  refill() {
+    this.bag = CONFIG.PIECES.slice();
+    for (let i = this.bag.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [this.bag[i], this.bag[j]] = [this.bag[j], this.bag[i]];
+    }
+  }
+  next() {
+    if (this.bag.length === 0) this.refill();
+    let type = this.bag.shift();
+    if (this.history.length >= 8) {
+      const recent = this.history.slice(-8);
+      if (recent.every(t => t === type)) {
+        this.bag.push(type);
+        type = this.bag.shift();
+      }
+    }
+    this.history.push(type);
+    if (this.history.length > 8) this.history.shift();
+    return type;
+  }
+  peek(n) {
+    while (this.bag.length < n) this.refill();
+    return this.bag.slice(0, n);
+  }
+}
+
+class Piece {
+  constructor(type, x, y, rot = 0) {
+    this.type = type; this.x = x; this.y = y; this.rot = rot;
+  }
+  clone() { return new Piece(this.type, this.x, this.y, this.rot); }
+  cells() {
+    const m = CONFIG.SHAPES[this.type][this.rot];
+    const out = [];
+    for (let r = 0; r < m.length; r++)
+      for (let c = 0; c < m[r].length; c++)
+        if (m[r][c]) out.push([this.x + c, this.y + r]);
+    return out;
+  }
+  colorIdx() { return CONFIG.PIECES.indexOf(this.type); }
+}
+
+class Board {
+  constructor() {
+    this.grid = Array.from({ length: CONFIG.ROWS }, () => Array(CONFIG.COLS).fill(0));
+  }
+  reset() {
+    this.grid = Array.from({ length: CONFIG.ROWS }, () => Array(CONFIG.COLS).fill(0));
+  }
+  inBounds(x, y) { return x >= 0 && x < CONFIG.COLS && y < CONFIG.ROWS; }
+  collides(piece) {
+    for (const [x, y] of piece.cells()) {
+      if (x < 0 || x >= CONFIG.COLS || y >= CONFIG.ROWS) return true;
+      if (y >= 0 && this.grid[y][x]) return true;
+    }
+    return false;
+  }
+  lock(piece) {
+    const ci = piece.colorIdx() + 1;
+    for (const [x, y] of piece.cells()) {
+      if (y >= 0 && y < CONFIG.ROWS) this.grid[y][x] = ci;
+    }
+  }
+  clearLines() {
+    const rows = [];
+    for (let r = CONFIG.ROWS - 1; r >= 0; r--) {
+      if (this.grid[r].every(c => c > 0)) rows.push(r);
+    }
+    for (const r of rows.slice().sort((a, b) => b - a)) {
+      this.grid.splice(r, 1);
+      this.grid.unshift(Array(CONFIG.COLS).fill(0));
+    }
+    return { count: rows.length, rows };
+  }
+  isPerfectClear() {
+    for (let r = 0; r < CONFIG.ROWS; r++)
+      for (let c = 0; c < CONFIG.COLS; c++)
+        if (this.grid[r][c]) return false;
+    return true;
+  }
+  ghostY(piece) {
+    const g = piece.clone();
+    while (!this.collides(new Piece(g.type, g.x, g.y + 1, g.rot))) g.y++;
+    return g.y;
+  }
+}
+
+class TSpinDetector {
+  static corners(board, px, py) {
+    const cx = px + 1, cy = py + 1;
+    const corners = [
+      [cx-1,cy-1],[cx+1,cy-1],[cx-1,cy+1],[cx+1,cy+1]
+    ];
+    let filled = 0;
+    for (const [x,y] of corners) {
+      if (x < 0 || x >= CONFIG.COLS || y >= CONFIG.ROWS) filled++;
+      else if (y >= 0 && board.grid[y][x]) filled++;
+    }
+    return filled;
+  }
+  static detect(board, piece, lastWasRotate, lines) {
+    if (!lastWasRotate || piece.type !== 'T' || lines === 0) return { spin: false, mini: false };
+    const filled = TSpinDetector.corners(board, piece.x, piece.y);
+    if (filled < 3) return { spin: false, mini: false };
+    const facing = piece.rot;
+    const cx = piece.x + 1, cy = piece.y + 1;
+    const front = [
+      [[cx,cy-1],[cx-1,cy],[cx+1,cy]],
+      [[cx+1,cy],[cx,cy-1],[cx,cy+1]],
+      [[cx,cy+1],[cx-1,cy],[cx+1,cy]],
+      [[cx-1,cy],[cx,cy-1],[cx,cy+1]]
+    ][facing];
+    let frontFilled = 0;
+    for (const [x,y] of front) {
+      if (x < 0 || x >= CONFIG.COLS || y >= CONFIG.ROWS) frontFilled++;
+      else if (y >= 0 && board.grid[y][x]) frontFilled++;
+    }
+    const mini = frontFilled < 2;
+    return { spin: true, mini };
+  }
+}
+
+class ScoreManager {
+  constructor() {
+    this.score = 0; this.level = 1; this.lines = 0; this.combo = -1;
+    this.b2b = false; this.b2bCount = 0;
+    this.piecesPlaced = 0; this.tetrises = 0; this.tspins = 0;
+    this.highScores = this.loadScores();
+  }
+  loadScores() {
+    try { return JSON.parse(localStorage.getItem(CONFIG.LS_SCORES) || '[]'); }
+    catch { return []; }
+  }
+  saveScore(entry) {
+    this.highScores.push(entry);
+    this.highScores.sort((a,b) => b.score - a.score);
+    this.highScores = this.highScores.slice(0, 5);
+    localStorage.setItem(CONFIG.LS_SCORES, JSON.stringify(this.highScores));
+  }
+  reset() {
+    this.score = 0; this.level = 1; this.lines = 0; this.combo = -1;
+    this.b2b = false; this.b2bCount = 0;
+    this.piecesPlaced = 0; this.tetrises = 0; this.tspins = 0;
+  }
+  addHardDrop(n) { this.score += n * 2; }
+  lineClear(count, tspin, mini, perfect) {
+    const lv = this.level;
+    let base = 0;
+    if (tspin) {
+      if (mini) {
+        base = count === 1 ? 100 : count === 2 ? 300 : 500;
+      } else {
+        base = count === 1 ? 800 : count === 2 ? 1200 : count === 3 ? 1600 : 0;
+      }
+    } else {
+      base = count === 1 ? 100 : count === 2 ? 300 : count === 3 ? 500 : count === 4 ? 800 : 0;
+    }
+    base *= lv;
+    if (perfect) base += 3400 * lv;
+    this.combo++;
+    if (this.combo > 0) base += 50 * this.combo * lv;
+    const isDifficult = tspin || count === 4;
+    if (isDifficult && this.b2b) {
+      base = Math.floor(base * 1.5);
+      this.b2bCount++;
+    }
+    if (isDifficult) this.b2b = true;
+    else if (count > 0) this.b2b = false;
+    this.score += base;
+    this.lines += count;
+    const newLevel = Math.floor(this.lines / 10) + 1;
+    const leveled = newLevel > this.level;
+    this.level = newLevel;
+    if (count === 4 && !tspin) this.tetrises++;
+    if (tspin) this.tspins++;
+    return { points: base, leveled, tetris: count === 4 && !tspin, perfect };
+  }
+}
+
+class AudioEngine {
+  constructor() {
+    this.ctx = null; this.sfxVol = 0.7; this.musicVol = 0.3;
+    this.musicNode = null; this.musicGain = null;
+    this.muted = false;
+  }
+  init() {
+    if (this.ctx) return;
+    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    this.master = this.ctx.createGain();
+    this.sfxGain = this.ctx.createGain();
+    this.musicGain = this.ctx.createGain();
+    this.sfxGain.connect(this.master);
+    this.musicGain.connect(this.master);
+    this.master.connect(this.ctx.destination);
+    this.updateVolumes();
+  }
+  resume() { if (this.ctx?.state === 'suspended') this.ctx.resume(); }
+  updateVolumes() {
+    if (!this.ctx) return;
+    const g = window.game;
+    const sfxOn = !g || g.settings?.sfxOn !== false;
+    const musicOn = !g || g.settings?.musicOn !== false;
+    this.sfxGain.gain.value = this.muted || !sfxOn ? 0 : this.sfxVol;
+    this.musicGain.gain.value = this.muted || !musicOn ? 0 : this.musicVol;
+  }
+  tone(freq, dur, type = 'square', vol = 0.15, when = 0) {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime + when;
+    const o = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g); g.connect(this.sfxGain);
+    o.start(t); o.stop(t + dur + 0.05);
+  }
+  noise(dur, vol = 0.08) {
+    if (!this.ctx) return;
+    const t = this.ctx.currentTime;
+    const buf = this.ctx.createBuffer(1, this.ctx.sampleRate * dur, this.ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    const f = this.ctx.createBiquadFilter();
+    f.type = 'lowpass'; f.frequency.value = 800;
+    src.connect(f); f.connect(g); g.connect(this.sfxGain);
+    src.start(t);
+  }
+  playMove() { this.tone(220, 0.04, 'triangle', 0.08); }
+  playRotate() { this.tone(330, 0.05, 'triangle', 0.1); }
+  playDrop() { this.tone(110, 0.08, 'sine', 0.12); }
+  playLineClear() { this.tone(440, 0.1, 'square', 0.12); this.tone(550, 0.1, 'square', 0.1, 0.05); }
+  playLevelUp() { [523,659,784].forEach((f,i) => this.tone(f, 0.15, 'sine', 0.1, i*0.1)); }
+  playGameOver() { this.tone(80, 0.5, 'sawtooth', 0.15); this.noise(0.3, 0.06); }
+  playTetris() {
+    [523,659,784].forEach((f,i) => this.tone(f, 0.2, 'sine', 0.12, i*0.12));
+  }
+  startMusic() {
+    if (!this.ctx || this.musicNode) return;
+    const chords = [[130.81,164.81,196],[146.83,174.61,220],[123.47,155.56,185],[138.59,164.81,207.65]];
+    let idx = 0;
+    const playChord = () => {
+      if (!this.ctx || !this.musicNode) return;
+      const t = this.ctx.currentTime;
+      const ch = chords[idx % chords.length];
+      ch.forEach((f, i) => {
+        const o = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        o.type = 'sine'; o.frequency.value = f;
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.04, t + 0.3);
+        g.gain.linearRampToValueAtTime(0.02, t + 2);
+        g.gain.linearRampToValueAtTime(0, t + 4);
+        o.connect(g); g.connect(this.musicGain);
+        o.start(t); o.stop(t + 4.1);
+      });
+      idx++;
+      this.musicTimer = setTimeout(playChord, 4000);
+    };
+    this.musicNode = true;
+    playChord();
+  }
+  stopMusic() {
+    this.musicNode = null;
+    if (this.musicTimer) { clearTimeout(this.musicTimer); this.musicTimer = null; }
+  }
+}
+
+class InputHandler {
+  constructor(game) {
+    this.game = game;
+    this.keys = {};
+    this.das = CONFIG.DAS_DEFAULT;
+    this.arr = CONFIG.ARR_DEFAULT;
+    this.dasTimer = 0; this.arrTimer = 0; this.dasDir = 0;
+    this.pendingRotate = 0; this.pendingHold = false;
+    window.addEventListener('keydown', e => this.onKeyDown(e));
+    window.addEventListener('keyup', e => this.onKeyUp(e));
+  }
+  loadSettings(s) {
+    if (s.das != null) this.das = s.das;
+    if (s.arr != null) this.arr = s.arr;
+  }
+  onKeyDown(e) {
+    if (e.key === '`') { this.game.toggleFps(); e.preventDefault(); return; }
+    if (this.keys[e.code]) return;
+    this.keys[e.code] = true;
+    const g = this.game;
+    if (g.screen === 'settings') { g.handleSettingsKey(e); return; }
+    if (e.key === '?' || e.key === '/') { g.showControls = !g.showControls; e.preventDefault(); return; }
+    if (g.screen === 'start' && (e.key === 'Enter' || e.code === 'Space')) { g.startGame(); e.preventDefault(); return; }
+    if (g.screen === 'over' && e.key === 'Enter') { g.startGame(); e.preventDefault(); return; }
+    if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') {
+      if (g.screen === 'playing') g.pause();
+      else if (g.screen === 'pause') g.unpause();
+      e.preventDefault(); return;
+    }
+    if (g.screen === 'pause' && (e.key === 'r' || e.key === 'R')) { g.startGame(); e.preventDefault(); return; }
+    if (g.screen === 'pause' && (e.key === 's' || e.key === 'S')) { g.openSettings(); e.preventDefault(); return; }
+    if (g.screen !== 'playing') return;
+    if (g.areTimer > 0 && !g.current) {
+      if (e.code === 'ArrowUp' || e.code === 'KeyX') { g.pendingIRS = 1; e.preventDefault(); }
+      else if (e.code === 'KeyZ' || e.code === 'ControlLeft' || e.code === 'ControlRight') { g.pendingIRS = -1; e.preventDefault(); }
+      else if (e.code === 'KeyC' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') { g.tryHold(); e.preventDefault(); }
+      return;
+    }
+    if (e.code === 'ArrowLeft') { g.tryMove(-1); this.dasDir = -1; this.dasTimer = 0; e.preventDefault(); }
+    else if (e.code === 'ArrowRight') { g.tryMove(1); this.dasDir = 1; this.dasTimer = 0; e.preventDefault(); }
+    else if (e.code === 'ArrowDown') { g.softDrop = true; e.preventDefault(); }
+    else if (e.code === 'ArrowUp' || e.code === 'KeyX') { g.tryRotate(1); e.preventDefault(); }
+    else if (e.code === 'KeyZ' || e.code === 'ControlLeft' || e.code === 'ControlRight') { g.tryRotate(-1); e.preventDefault(); }
+    else if (e.code === 'Space') { g.hardDrop(); e.preventDefault(); }
+    else if (e.code === 'KeyC' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') { g.tryHold(); e.preventDefault(); }
+    else if (e.key === 'd' || e.key === 'D') { g.toggleDark(); }
+    else if (e.key === 's' || e.key === 'S') { g.openSettings(); e.preventDefault(); }
+  }
+  onKeyUp(e) {
+    this.keys[e.code] = false;
+    if (e.code === 'ArrowLeft' && this.dasDir === -1) this.dasDir = 0;
+    if (e.code === 'ArrowRight' && this.dasDir === 1) this.dasDir = 0;
+    if (e.code === 'ArrowDown') this.game.softDrop = false;
+  }
+  update(dt) {
+    const g = this.game;
+    if (g.screen !== 'playing') return;
+    if (this.dasDir !== 0) {
+      this.dasTimer += dt;
+      if (this.dasTimer >= this.das) {
+        this.arrTimer += dt;
+        if (this.arrTimer >= this.arr) {
+          g.tryMove(this.dasDir);
+          this.arrTimer = 0;
+        }
+      }
+    } else { this.dasTimer = 0; this.arrTimer = 0; }
+  }
+}
+
+class TouchHandler {
+  constructor(game) {
+    this.game = game;
+    const bar = document.getElementById('touch-bar');
+    bar.addEventListener('touchstart', e => {
+      e.preventDefault();
+      const act = e.target.closest('button')?.dataset.act;
+      if (act) this.handle(act, true);
+    }, { passive: false });
+    bar.addEventListener('touchend', e => {
+      const act = e.target.closest('button')?.dataset.act;
+      if (act === 'down') this.game.softDrop = false;
+    });
+    bar.addEventListener('mousedown', e => {
+      const act = e.target.closest('button')?.dataset.act;
+      if (act) this.handle(act, true);
+    });
+    bar.addEventListener('mouseup', e => {
+      const act = e.target.closest('button')?.dataset.act;
+      if (act === 'down') this.game.softDrop = false;
+    });
+  }
+  handle(act) {
+    const g = this.game;
+    if (g.screen === 'start') { g.startGame(); return; }
+    if (g.screen !== 'playing' && g.screen !== 'pause') return;
+    if (g.screen === 'pause') { g.unpause(); return; }
+    switch (act) {
+      case 'left': g.tryMove(-1); break;
+      case 'right': g.tryMove(1); break;
+      case 'down': g.softDrop = true; break;
+      case 'rotL': g.tryRotate(-1); break;
+      case 'rotR': g.tryRotate(1); break;
+      case 'drop': g.hardDrop(); break;
+    }
+  }
+}
+
+class Renderer {
+  constructor(canvas, game) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.game = game;
+    this.particles = [];
+    this.rainDrops = [];
+    this.scorePops = [];
+  }
+  palette() {
+    const dark = this.game.dark;
+    return dark ? { ...CONFIG.COLORS, ...CONFIG.COLORS.dark, pieces: CONFIG.COLORS.pieces } : CONFIG.COLORS;
+  }
+  draw() {
+    const ctx = this.ctx;
+    const g = this.game;
+    const pal = this.palette();
+    ctx.save();
+    if (g.screen === 'over' && !g.reducedMotion) {
+      ctx.filter = 'grayscale(1)';
+    }
+    const playBottom = playfieldBottom();
+    ctx.fillStyle = '#020617';
+    ctx.fillRect(0, 0, CONFIG.W, CONFIG.H);
+    ctx.fillStyle = pal.bg;
+    ctx.fillRect(0, 0, CONFIG.W, playBottom);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, CONFIG.W, playBottom);
+    ctx.clip();
+    ctx.globalAlpha = 0.04;
+    ctx.filter = (g.screen === 'over' && !g.reducedMotion) ? 'grayscale(1) url(#grain)' : 'url(#grain)';
+    ctx.fillRect(0, 0, CONFIG.W, playBottom);
+    ctx.filter = (g.screen === 'over' && !g.reducedMotion) ? 'grayscale(1)' : 'none';
+    ctx.globalAlpha = 1;
+    ctx.restore();
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, CONFIG.W, playBottom);
+    ctx.clip();
+    this.drawSidebar(pal);
+    this.drawBoard(pal);
+    if (g.current && g.screen === 'playing') this.drawPiece(g.current, pal, false);
+    if (g.ghost && g.screen === 'playing' && g.settings.ghostOn !== false) this.drawPiece(g.ghost, pal, true);
+    this.drawEffects(pal);
+    ctx.restore();
+    this.drawOverlays(pal);
+    if (g.showFps) this.drawFps(pal);
+    ctx.restore();
+  }
+  boardRect() {
+    return getBoardRect();
+  }
+  cellPos(bx, by, col, row) {
+    return [bx + col * gridPitchX(), by + row * gridPitchY()];
+  }
+  drawCell(cx, cy, color, ink, flash) {
+    const ctx = this.ctx;
+    const sw = CONFIG.CELL_W;
+    const sh = CONFIG.CELL_H;
+    ctx.fillStyle = flash ? '#fff' : color;
+    ctx.fillRect(cx, cy, sw, sh);
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = Math.max(1, Math.min(sw, sh) * 0.07);
+    const inset = Math.max(1, ctx.lineWidth);
+    ctx.strokeRect(cx + inset, cy + inset, sw - inset * 2, sh - inset * 2);
+  }
+  drawBoard(pal) {
+    const ctx = this.ctx;
+    const { x, y, w, h } = this.boardRect();
+    const frame = 2;
+    ctx.save();
+    if (this.game.screen === 'pause') {
+      ctx.filter = 'blur(4px)';
+    }
+    if (this.game.shakeT > 0 && !this.game.reducedMotion) {
+      const s = (this.game.shakeT / CONFIG.TETRIS_SHAKE_MS) * 4;
+      ctx.translate((Math.random()-0.5)*s, (Math.random()-0.5)*s);
+    }
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+    ctx.clip();
+    ctx.fillStyle = pal.bg;
+    ctx.fillRect(x, y, w, h);
+    for (let r = 0; r < CONFIG.ROWS; r++) {
+      for (let c = 0; c < CONFIG.COLS; c++) {
+        const [cx, cy] = boardCellXY(c, r);
+        const val = this.game.board.grid[r][c];
+        ctx.fillStyle = pal.grid;
+        ctx.fillRect(cx, cy, CONFIG.CELL_W, CONFIG.CELL_H);
+        if (val > 0) this.drawCell(cx, cy, pal.pieces[val - 1], pal.ink, this.game.lockFlashT > 0);
+      }
+    }
+    if (this.game.lineClearAnim) this.drawLineClear(pal);
+    if (this.game.dropTrail.length) this.drawDropTrail(pal);
+    ctx.restore();
+    ctx.strokeStyle = pal.ink;
+    ctx.lineWidth = frame;
+    ctx.strokeRect(x - frame / 2, y - frame / 2, w + frame, h + frame);
+  }
+  drawPiece(piece, pal, ghost) {
+    const ctx = this.ctx;
+    const { x: bx, y: by, w, h } = this.boardRect();
+    const cells = piece.cells();
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(bx, by, w, h);
+    ctx.clip();
+    for (const [col, row] of cells) {
+      if (row < 0 || row >= CONFIG.ROWS || col < 0 || col >= CONFIG.COLS) continue;
+      const [px, py] = this.cellPos(bx, by, col, row);
+      if (ghost) {
+        ctx.fillStyle = pal.ghost;
+        ctx.fillRect(px, py, CONFIG.CELL_W, CONFIG.CELL_H);
+      } else {
+        this.drawCell(px, py, pal.pieces[piece.colorIdx()], pal.ink, false);
+      }
+    }
+    ctx.restore();
+  }
+  drawMiniPiece(type, mx, my, scale, pal) {
+    const ctx = this.ctx;
+    const m = CONFIG.SHAPES[type][0];
+    const cs = 18 * scale;
+    for (let r = 0; r < m.length; r++)
+      for (let c = 0; c < m[r].length; c++)
+        if (m[r][c]) {
+          ctx.fillStyle = pal.pieces[CONFIG.PIECES.indexOf(type)];
+          ctx.fillRect(mx + c * (cs+1), my + r * (cs+1), cs, cs);
+          ctx.strokeStyle = pal.ink;
+          ctx.lineWidth = 1;
+          ctx.strokeRect(mx + c * (cs+1) + 1, my + r * (cs+1) + 1, cs - 2, cs - 2);
+        }
+  }
+  drawSidebar(pal) {
+    const ctx = this.ctx;
+    const board = getBoardRect();
+    const sx = CONFIG.SIDEBAR_X;
+    const sw = CONFIG.SIDEBAR_W;
+    const top = board.y;
+    const playH = board.h;
+    const fs = Math.max(9, Math.round(playH * 0.018));
+    const fsLg = Math.max(20, Math.round(playH * 0.048));
+    const fsMd = Math.max(11, Math.round(playH * 0.022));
+    ctx.fillStyle = pal.ink;
+    ctx.font = `300 ${fs}px "DM Sans", sans-serif`;
+    const label = (t, y) => { ctx.fillText(t.toUpperCase(), sx, y); };
+
+    const y0 = top + fs * 2;
+    label('Hold', y0);
+    const holdH = playH * 0.11;
+    ctx.strokeStyle = pal.grid;
+    ctx.strokeRect(sx, y0 + 6, sw - 8, holdH);
+    if (this.game.hold) this.drawMiniPiece(this.game.hold, sx + 8, y0 + 12, Math.min(1, holdH / 70), pal);
+
+    const y1 = y0 + holdH + fs * 2.5;
+    label('Next', y1);
+    const previewScale = Math.min(0.85, sw / 220);
+    for (let i = 0; i < 3; i++) {
+      const t = this.game.queue[i];
+      if (t) this.drawMiniPiece(t, sx + i * (sw / 3.2), y1 + 10, previewScale, pal);
+    }
+
+    const y2 = y1 + playH * 0.16;
+    label('Stats', y2);
+    const sm = this.game.scores;
+    ctx.font = `400 ${fsLg}px "IBM Plex Mono", monospace`;
+    ctx.fillText(String(sm.score).padStart(7, '0'), sx, y2 + fsLg + 4);
+    ctx.font = `400 ${fsMd}px "IBM Plex Mono", monospace`;
+    ctx.fillText(`LV ${sm.level}`, sx, y2 + fsLg + fsMd + 10);
+    ctx.fillText(`LN ${sm.lines}`, sx + sw * 0.42, y2 + fsLg + fsMd + 10);
+    ctx.fillText(this.game.formatTime(), sx, y2 + fsLg + fsMd * 2 + 14);
+    const pps = this.game.elapsed > 0 ? (sm.piecesPlaced / (this.game.elapsed / 60000)).toFixed(1) : '0.0';
+    ctx.font = `400 ${Math.max(9, fs - 1)}px "IBM Plex Mono", monospace`;
+    ctx.fillText(`PCS ${sm.piecesPlaced}  T4 ${sm.tetrises}`, sx, y2 + fsLg + fsMd * 3 + 16);
+    ctx.fillText(`PPS ${pps}  TS ${sm.tspins}`, sx, y2 + fsLg + fsMd * 3 + 30);
+    if (sm.b2b) ctx.fillText(`B2B ×${sm.b2bCount + 1}`, sx, y2 + fsLg + fsMd * 3 + 44);
+    if (sm.combo > 0) ctx.fillText(`COMBO ${sm.combo}`, sx, y2 + fsLg + fsMd * 3 + 58);
+
+    const y3 = board.y + board.h - fs * 2;
+    label('Top 5', y3);
+    ctx.font = `400 ${Math.max(9, fs)}px "IBM Plex Mono", monospace`;
+    this.game.scores.highScores.slice(0, 5).forEach((e, i) => {
+      ctx.fillText(`${i + 1}. ${e.score}`, sx, y3 + 14 + i * (fs + 4));
+    });
+
+    const yH = y3 - playH * 0.14;
+    label('History', yH);
+    const hist = this.game.bag.history.slice(-8);
+    const hScale = Math.min(0.45, sw / 200);
+    hist.forEach((t, i) => this.drawMiniPiece(t, sx + (i % 4) * (sw / 4.5), yH + 8 + Math.floor(i / 4) * (sw * 0.14), hScale, pal));
+
+    if (this.game.screen === 'settings') this.drawSettings(pal);
+  }
+  drawSettings(pal) {
+    const ctx = this.ctx;
+    const mx = Math.round(CONFIG.W * 0.06);
+    const my = Math.round(CONFIG.H * 0.08);
+    const mw = Math.round(CONFIG.W * 0.88);
+    const mh = Math.round(CONFIG.H * 0.84);
+    ctx.fillStyle = 'rgba(26,22,18,0.85)';
+    ctx.fillRect(0, 0, CONFIG.W, CONFIG.H);
+    ctx.fillStyle = pal.bg;
+    ctx.fillRect(mx, my, mw, mh);
+    ctx.strokeStyle = pal.ink;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(mx, my, mw, mh);
+    ctx.fillStyle = pal.ink;
+    ctx.font = '300 24px "DM Sans"';
+    ctx.fillText('SETTINGS', mx + 40, my + 50);
+    ctx.font = '400 14px "IBM Plex Mono"';
+    const s = this.game.settings;
+    const rows = [
+      `DAS: ${s.das}ms  [←/→]`,
+      `ARR: ${s.arr}ms  [</>]`,
+      `SFX: ${Math.round(s.sfxVol*100)}%  [Q/W]`,
+      `Music: ${Math.round(s.musicVol*100)}%  [A/E]`,
+      `Ghost: ${s.ghostOn !== false ? 'ON' : 'OFF'}  [G]`,
+      `SFX on: ${s.sfxOn !== false ? 'ON' : 'OFF'}  [F]`,
+      `Music on: ${s.musicOn !== false ? 'ON' : 'OFF'}  [M]`,
+      `Dark mode: ${this.game.dark ? 'ON' : 'OFF'}  [D]`,
+      '',
+      'Esc — close'
+    ];
+    rows.forEach((r, i) => ctx.fillText(r, mx + 40, my + 100 + i * 32));
+  }
+  drawLineClear(pal) {
+    const ctx = this.ctx;
+    const anim = this.game.lineClearAnim;
+    const prog = 1 - anim.t / CONFIG.LINE_CLEAR_MS;
+    const { x, y, w } = this.boardRect();
+    for (const row of anim.rows) {
+      const ry = boardCellXY(0, row)[1];
+      ctx.fillStyle = pal.ink;
+      ctx.globalAlpha = prog;
+      ctx.fillRect(x, ry, w, CONFIG.CELL_H);
+      ctx.globalAlpha = 1;
+    }
+  }
+  drawDropTrail(pal) {
+    const ctx = this.ctx;
+    const { x: bx, y: by } = this.boardRect();
+    const now = performance.now();
+    for (const t of this.game.dropTrail) {
+      const a = 1 - (now - t.time) / CONFIG.DROP_TRAIL_MS;
+      if (a <= 0) continue;
+      ctx.globalAlpha = a * 0.4;
+      for (const [col, row] of t.cells) {
+        if (row < 0 || row >= CONFIG.ROWS) continue;
+        const [px, py] = this.cellPos(bx, by, col, row);
+        ctx.fillStyle = pal.pieces[t.color];
+        ctx.fillRect(px, py, CONFIG.CELL_W, CONFIG.CELL_H);
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+  drawEffects(pal) {
+    if (this.game.screen === 'pause' && this.game.particlesEnabled && !this.game.reducedMotion) this.drawParticles(pal);
+    if (this.game.screen === 'over' && !this.game.reducedMotion) this.drawRain(pal);
+    for (const pop of this.scorePops) {
+      const a = 1 - pop.t / 1000;
+      if (a <= 0) continue;
+      this.ctx.fillStyle = pal.ink;
+      this.ctx.globalAlpha = a;
+      this.ctx.font = '500 20px "IBM Plex Mono"';
+      this.ctx.fillText(`+${pop.val}`, pop.x, pop.y - pop.t * 0.05);
+      this.ctx.globalAlpha = 1;
+    }
+    this.scorePops = this.scorePops.filter(p => p.t < 1000);
+  }
+  drawParticles(pal) {
+    const { x, y, w, h } = this.boardRect();
+    if (this.particles.length < 12) {
+      for (let i = this.particles.length; i < 12; i++) {
+        this.particles.push({
+          x: x + Math.random() * w,
+          y: y + Math.random() * h,
+          type: CONFIG.PIECES[Math.floor(Math.random() * 7)],
+          vx: (Math.random()-0.5)*0.3, vy: -0.2 - Math.random()*0.3,
+          rot: Math.random() * Math.PI
+        });
+      }
+    }
+    for (const p of this.particles) {
+      p.x += p.vx; p.y += p.vy; p.rot += 0.01;
+      if (p.y < y) p.y = y + h;
+      this.drawMiniPiece(p.type, p.x, p.y, 0.6, pal);
+    }
+  }
+  drawRain(pal) {
+    if (this.rainDrops.length < 40) {
+      for (let i = 0; i < 40; i++) {
+        this.rainDrops.push({ x: Math.random()*CONFIG.W, y: Math.random()*CONFIG.H, spd: 2+Math.random()*4 });
+      }
+    }
+    const ctx = this.ctx;
+    ctx.strokeStyle = pal.ink;
+    ctx.globalAlpha = 0.15;
+    for (const d of this.rainDrops) {
+      d.y += d.spd;
+      if (d.y > CONFIG.H) { d.y = -10; d.x = Math.random()*CONFIG.W; }
+      ctx.beginPath();
+      ctx.moveTo(d.x, d.y);
+      ctx.lineTo(d.x, d.y + 12);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+  drawOverlays(pal) {
+    const ctx = this.ctx;
+    const g = this.game;
+    if (g.levelOverlayT > 0) {
+      const a = Math.min(1, g.levelOverlayT / 200);
+      ctx.globalAlpha = a;
+      ctx.fillStyle = pal.ink;
+      ctx.font = '300 96px "DM Sans"';
+      ctx.textAlign = 'center';
+      ctx.fillText(String(g.scores.level), CONFIG.W/2, CONFIG.H/2);
+      ctx.textAlign = 'left';
+      ctx.globalAlpha = 1;
+    }
+    if (g.screen === 'start') this.drawCenterOverlay(pal, 'BAUHAUS TETRIS', 'Press Enter to begin', '? — controls');
+    if (g.perfectOverlayT > 0) {
+      const a = Math.min(1, g.perfectOverlayT / 400);
+      ctx.globalAlpha = a;
+      ctx.fillStyle = pal.ink;
+      ctx.font = '300 36px "DM Sans"';
+      ctx.textAlign = 'center';
+      ctx.fillText('PERFECT CLEAR', CONFIG.W / 2, CONFIG.H / 2);
+      ctx.textAlign = 'left';
+      ctx.globalAlpha = 1;
+    }
+    if (g.screen === 'pause') this.drawCenterOverlay(pal, 'PAUSED', 'P/Esc resume  R restart  S settings', '');
+    if (g.screen === 'over') this.drawCenterOverlay(pal, 'GAME OVER', `Score: ${g.scores.score}`, 'Enter — retry');
+    if (g.showControls) this.drawControls(pal);
+  }
+  drawCenterOverlay(pal, title, sub, hint) {
+    const ctx = this.ctx;
+    ctx.fillStyle = 'rgba(245,240,232,0.92)';
+    if (this.game.dark) ctx.fillStyle = 'rgba(26,22,18,0.92)';
+    ctx.fillRect(0, 0, CONFIG.W, CONFIG.H);
+    ctx.fillStyle = pal.ink;
+    ctx.textAlign = 'center';
+    ctx.font = '300 42px "DM Sans"';
+    ctx.fillText(title, CONFIG.W/2, CONFIG.H/2 - 30);
+    ctx.font = '400 16px "IBM Plex Mono"';
+    ctx.fillText(sub, CONFIG.W/2, CONFIG.H/2 + 20);
+    if (hint) { ctx.font = '300 13px "DM Sans"'; ctx.fillText(hint, CONFIG.W/2, CONFIG.H/2 + 55); }
+    ctx.textAlign = 'left';
+  }
+  drawControls(pal) {
+    const ctx = this.ctx;
+    const mx = Math.round(CONFIG.W * 0.06);
+    const my = Math.round(CONFIG.H * 0.08);
+    const mw = Math.round(CONFIG.W * 0.88);
+    const mh = Math.round(CONFIG.H * 0.84);
+    ctx.fillStyle = 'rgba(26,22,18,0.9)';
+    ctx.fillRect(mx, my, mw, mh);
+    ctx.fillStyle = '#F5F0E8';
+    ctx.font = '300 20px "DM Sans"';
+    ctx.fillText('CONTROLS', mx + 40, my + 40);
+    ctx.font = '400 13px "IBM Plex Mono"';
+    const lines = [
+      '← → Move   ↑/X CW   Z/CCW   ↓ Soft drop',
+      'Space Hard drop   C/Shift Hold   P/Esc Pause',
+      'S Settings   D Dark mode   ? This overlay   ` FPS',
+    ];
+    lines.forEach((l, i) => ctx.fillText(l, mx + 40, my + 80 + i * 28));
+  }
+  drawFps(pal) {
+    const ctx = this.ctx;
+    ctx.fillStyle = pal.ink;
+    ctx.font = '400 12px "IBM Plex Mono"';
+    ctx.fillText(`${this.game.fps} FPS`, CONFIG.W - 80, 24);
+  }
+  addScorePop(val, x, y) {
+    this.scorePops.push({ val, x, y, t: 0 });
+  }
+}
+
+class Game {
+  constructor() {
+    this.canvas = document.getElementById('game');
+    resizeLayout(this.canvas);
+    this.board = new Board();
+    this.bag = new BagRandomizer();
+    this.scores = new ScoreManager();
+    this.audio = new AudioEngine();
+    this.renderer = new Renderer(this.canvas, this);
+    this.input = new InputHandler(this);
+    this.touch = new TouchHandler(this);
+    this.settings = { das: CONFIG.DAS_DEFAULT, arr: CONFIG.ARR_DEFAULT, sfxVol: 0.7, musicVol: 0.3, ghostOn: true, musicOn: true, sfxOn: true };
+    this.loadSettings();
+    this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this.dark = localStorage.getItem(CONFIG.LS_DARK) === '1';
+    document.body.classList.toggle('dark', this.dark);
+    this.screen = 'start';
+    this.prevScreen = 'start';
+    this.current = null; this.ghost = null; this.hold = null; this.canHold = true;
+    this.queue = [];
+    this.gravityAcc = 0; this.lockTimer = 0; this.lockResets = 0;
+    this.onGround = false; this.lastWasRotate = false;
+    this.softDrop = false; this.areTimer = 0; this.pendingIRS = 0;
+    this.lineClearAnim = null; this.pendingClear = null; this.perfectOverlayT = 0;
+    this.dropTrail = [];
+    this.lockFlashT = 0; this.levelOverlayT = 0; this.shakeT = 0;
+    this.startTime = 0; this.elapsed = 0; this.pausedAt = 0;
+    this.showControls = false; this.showFps = false;
+    this.fps = 60; this.frameCount = 0; this.fpsTimer = 0;
+    this.particlesEnabled = true;
+    this.accumulator = 0; this.lastFrame = 0;
+    this.input.loadSettings(this.settings);
+    this.audio.sfxVol = this.settings.sfxVol;
+    this.audio.musicVol = this.settings.musicVol;
+    this.resizeLayout();
+    window.addEventListener('resize', () => this.resizeLayout());
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', () => this.resizeLayout());
+    }
+    this.canvas.addEventListener('click', () => { this.canvas.focus(); this.audio.init(); this.audio.resume(); });
+    this.canvas.focus();
+    this.fillQueue();
+    requestAnimationFrame(t => this.loop(t));
+  }
+  loadSettings() {
+    try {
+      const s = JSON.parse(localStorage.getItem(CONFIG.LS_SETTINGS) || '{}');
+      Object.assign(this.settings || {}, s);
+    } catch {}
+  }
+  saveSettings() {
+    localStorage.setItem(CONFIG.LS_SETTINGS, JSON.stringify(this.settings));
+  }
+  resizeLayout() {
+    resizeLayout(this.canvas);
+  }
+  fillQueue() {
+    while (this.queue.length < 5) this.queue.push(this.bag.next());
+  }
+  spawnPiece() {
+    const type = this.queue.shift();
+    this.fillQueue();
+    const sp = SPAWN[type];
+    this.current = new Piece(type, sp.x, sp.y, 0);
+    this.canHold = true;
+    this.lockTimer = 0; this.lockResets = 0; this.onGround = false;
+    this.lastWasRotate = false; this.gravityAcc = 0;
+    if (this.board.collides(this.current)) {
+      this.gameOver();
+      return;
+    }
+    this.updateGhost();
+    if (this.pendingIRS) {
+      this.tryRotate(this.pendingIRS);
+      this.pendingIRS = 0;
+    }
+  }
+  updateGhost() {
+    if (!this.current) { this.ghost = null; return; }
+    const g = this.current.clone();
+    g.y = this.board.ghostY(this.current);
+    this.ghost = g;
+  }
+  tryMove(dx) {
+    if (!this.current || this.lineClearAnim) return false;
+    const p = this.current.clone();
+    p.x += dx;
+    if (!this.board.collides(p)) {
+      this.current.x = p.x;
+      this.updateGhost();
+      this.audio.playMove();
+      if (this.onGround) this.resetLock();
+      return true;
+    }
+    return false;
+  }
+  tryRotate(dir) {
+    if (!this.current || this.lineClearAnim) return false;
+    if (this.current.type === 'O') { this.audio.playRotate(); return true; }
+    const from = this.current.rot;
+    const to = (from + dir + 4) % 4;
+    const kicks = this.current.type === 'I' ? CONFIG.KICKS_I : CONFIG.KICKS_JLSTZ;
+    const key = `${from}>${to}`;
+    const table = kicks[key] || [[0,0]];
+    for (const [kx, ky] of table) {
+      const p = this.current.clone();
+      p.rot = to; p.x += kx; p.y += ky;
+      if (!this.board.collides(p)) {
+        this.current.rot = to; this.current.x = p.x; this.current.y = p.y;
+        this.lastWasRotate = true;
+        this.updateGhost();
+        this.audio.playRotate();
+        if (this.onGround) this.resetLock();
+        return true;
+      }
+    }
+    return false;
+  }
+  tryHold() {
+    if (!this.canHold || this.lineClearAnim) return;
+    if (!this.current && this.areTimer > 0) {
+      if (!this.queue.length) return;
+      this.hold = this.queue.shift();
+      this.fillQueue();
+      this.canHold = false;
+      return;
+    }
+    if (!this.current) return;
+    this.canHold = false;
+    const cur = this.current.type;
+    if (this.hold) {
+      const swap = this.hold;
+      this.hold = cur;
+      const sp = SPAWN[swap];
+      this.current = new Piece(swap, sp.x, sp.y, 0);
+    } else {
+      this.hold = cur;
+      this.current = null;
+      this.ghost = null;
+      this.areTimer = CONFIG.ARE_MS;
+    }
+    if (this.current && this.board.collides(this.current)) this.gameOver();
+    else if (this.current) { this.updateGhost(); this.resetLock(); }
+  }
+  hardDrop() {
+    if (!this.current || this.lineClearAnim) return;
+    let dist = 0;
+    while (!this.board.collides(new Piece(this.current.type, this.current.x, this.current.y+1, this.current.rot))) {
+      this.current.y++; dist++;
+    }
+    this.scores.addHardDrop(dist);
+    const cells = this.current.cells();
+    this.dropTrail.push({ cells, color: this.current.colorIdx(), time: performance.now() });
+    this.audio.playDrop();
+    this.lockPiece();
+  }
+  resetLock() {
+    if (this.lockResets < CONFIG.MAX_LOCK_RESETS) {
+      this.lockTimer = 0;
+      this.lockResets++;
+    }
+  }
+  countFullRows() {
+    let n = 0;
+    for (let r = 0; r < CONFIG.ROWS; r++)
+      if (this.board.grid[r].every(c => c > 0)) n++;
+    return n;
+  }
+  lockPiece() {
+    if (!this.current) return;
+    const locked = this.current.clone();
+    this.board.lock(this.current);
+    this.scores.piecesPlaced++;
+    this.lockFlashT = CONFIG.LOCK_FLASH_MS;
+    const spin = TSpinDetector.detect(this.board, locked, this.lastWasRotate, this.countFullRows());
+    const pendingRows = [];
+    for (let r = CONFIG.ROWS - 1; r >= 0; r--)
+      if (this.board.grid[r].every(c => c > 0)) pendingRows.push(r);
+    const lines = pendingRows.length;
+    let perfect = false;
+    if (lines > 0) {
+      perfect = true;
+      for (let r = 0; r < CONFIG.ROWS; r++) {
+        if (pendingRows.includes(r)) continue;
+        for (let c = 0; c < CONFIG.COLS; c++) {
+          if (this.board.grid[r][c]) { perfect = false; break; }
+        }
+        if (!perfect) break;
+      }
+    }
+    let result = { points: 0, leveled: false, tetris: false };
+    if (lines > 0) {
+      result = this.scores.lineClear(lines, spin.spin, spin.mini, perfect);
+      this.pendingClear = pendingRows.slice();
+      this.lineClearAnim = { rows: pendingRows.slice(), t: CONFIG.LINE_CLEAR_MS };
+      if (perfect) this.perfectOverlayT = 1200;
+      this.audio.playLineClear();
+      if (result.tetris) { this.shakeT = CONFIG.TETRIS_SHAKE_MS; this.audio.playTetris(); }
+      if (result.leveled) { this.levelOverlayT = CONFIG.LEVEL_OVERLAY_MS; this.audio.playLevelUp(); }
+      this.renderer.addScorePop(result.points, CONFIG.BOARD_X + 150, CONFIG.BOARD_Y + 200);
+    } else {
+      this.scores.combo = -1;
+    }
+    this.current = null;
+    this.ghost = null;
+    this.areTimer = CONFIG.ARE_MS;
+    this.onGround = false;
+    this.lastWasRotate = false;
+  }
+  gameOver() {
+    this.screen = 'over';
+    this.audio.playGameOver();
+    this.audio.stopMusic();
+    this.scores.saveScore({ score: this.scores.score, lines: this.scores.lines, time: this.elapsed, date: Date.now() });
+  }
+  startGame() {
+    this.audio.init();
+    this.audio.resume();
+    this.audio.startMusic();
+    this.board.reset();
+    this.bag = new BagRandomizer();
+    this.scores.reset();
+    this.queue = [];
+    this.hold = null;
+    this.fillQueue();
+    this.screen = 'playing';
+    this.startTime = performance.now();
+    this.elapsed = 0;
+    this.areTimer = CONFIG.ARE_MS;
+    this.current = null;
+    this.lineClearAnim = null;
+    this.pendingClear = null;
+    this.perfectOverlayT = 0;
+    this.dropTrail = [];
+    this.canHold = true;
+  }
+  pause() {
+    this.screen = 'pause';
+    this.pausedAt = performance.now();
+    this.audio.stopMusic();
+  }
+  unpause() {
+    this.screen = 'playing';
+    this.startTime += performance.now() - this.pausedAt;
+    this.audio.startMusic();
+  }
+  openSettings() {
+    this.prevScreen = this.screen;
+    this.screen = 'settings';
+  }
+  closeSettings() {
+    this.screen = this.prevScreen === 'settings' ? 'playing' : this.prevScreen;
+    this.saveSettings();
+  }
+  handleSettingsKey(e) {
+    if (e.key === 'Escape') { this.closeSettings(); return; }
+    if (e.key === 'ArrowLeft') this.settings.das = Math.max(50, this.settings.das - 10);
+    if (e.key === 'ArrowRight') this.settings.das = Math.min(500, this.settings.das + 10);
+    if (e.key === ',') this.settings.arr = Math.max(0, this.settings.arr - 10);
+    if (e.key === '.') this.settings.arr = Math.min(200, this.settings.arr + 10);
+    if (e.key === 'q') this.settings.sfxVol = Math.max(0, this.settings.sfxVol - 0.1);
+    if (e.key === 'w') this.settings.sfxVol = Math.min(1, this.settings.sfxVol + 0.1);
+    if (e.key === 'a') this.settings.musicVol = Math.max(0, this.settings.musicVol - 0.1);
+    if (e.key === 'e') this.settings.musicVol = Math.min(1, this.settings.musicVol + 0.1);
+    if (e.key === 'd' || e.key === 'D') this.toggleDark();
+    if (e.key === 'g' || e.key === 'G') this.settings.ghostOn = !(this.settings.ghostOn !== false);
+    if (e.key === 'f' || e.key === 'F') {
+      this.settings.sfxOn = !(this.settings.sfxOn !== false);
+      this.audio.updateVolumes();
+    }
+    if (e.key === 'm' || e.key === 'M') {
+      this.settings.musicOn = !(this.settings.musicOn !== false);
+      if (this.settings.musicOn === false) this.audio.stopMusic();
+      else if (this.screen === 'playing') this.audio.startMusic();
+      this.audio.updateVolumes();
+    }
+    this.input.loadSettings(this.settings);
+    this.audio.sfxVol = this.settings.sfxVol;
+    this.audio.musicVol = this.settings.musicVol;
+    this.audio.updateVolumes();
+    this.saveSettings();
+  }
+  toggleDark() {
+    this.dark = !this.dark;
+    localStorage.setItem(CONFIG.LS_DARK, this.dark ? '1' : '0');
+    document.body.classList.toggle('dark', this.dark);
+  }
+  toggleFps() { this.showFps = !this.showFps; }
+  formatTime() {
+    const s = Math.floor(this.elapsed / 1000);
+    const m = Math.floor(s / 60);
+    return `${String(m).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+  }
+  gravityInterval() {
+    const g = CONFIG.GRAVITY[Math.min(this.scores.level, CONFIG.GRAVITY.length - 1)];
+    return g;
+  }
+  update(dt) {
+    if (this.screen !== 'playing') {
+      if (this.screen === 'playing' || this.screen === 'pause') {}
+      return;
+    }
+    this.elapsed = performance.now() - this.startTime;
+    this.input.update(dt);
+
+    if (this.lineClearAnim) {
+      this.lineClearAnim.t -= dt;
+      if (this.perfectOverlayT > 0) this.perfectOverlayT -= dt;
+      if (this.lineClearAnim.t <= 0) {
+        if (this.pendingClear) {
+          for (const r of this.pendingClear.slice().sort((a, b) => b - a)) {
+            this.board.grid.splice(r, 1);
+            this.board.grid.unshift(Array(CONFIG.COLS).fill(0));
+          }
+          this.pendingClear = null;
+        }
+        this.lineClearAnim = null;
+        this.areTimer = CONFIG.ARE_MS;
+      }
+      return;
+    }
+
+    if (this.areTimer > 0) {
+      this.areTimer -= dt;
+      if (this.areTimer <= 0 && !this.current) this.spawnPiece();
+      return;
+    }
+
+    if (!this.current) return;
+
+    const grav = this.gravityInterval();
+    const gravRate = this.softDrop ? 1 : grav;
+    this.gravityAcc += dt / (gravRate * (1000/60));
+
+    if (this.softDrop) {
+      while (this.gravityAcc >= 1) {
+        this.gravityAcc -= 1;
+        if (!this.board.collides(new Piece(this.current.type, this.current.x, this.current.y+1, this.current.rot))) {
+          this.current.y++;
+          this.onGround = false;
+        } else {
+          this.onGround = true;
+          break;
+        }
+      }
+    } else {
+      if (this.gravityAcc >= 1) {
+        this.gravityAcc -= 1;
+        if (!this.board.collides(new Piece(this.current.type, this.current.x, this.current.y+1, this.current.rot))) {
+          this.current.y++;
+          this.onGround = false;
+          this.lockTimer = 0;
+        } else {
+          this.onGround = true;
+        }
+      }
+    }
+
+    if (this.onGround || this.board.collides(new Piece(this.current.type, this.current.x, this.current.y+1, this.current.rot))) {
+      this.onGround = true;
+      this.lockTimer += dt;
+      const maxLock = this.softDrop ? CONFIG.LOCK_DELAY_SOFT_MS : CONFIG.LOCK_DELAY_MS;
+      if (this.lockTimer >= maxLock) this.lockPiece();
+    }
+
+    this.updateGhost();
+    if (this.lockFlashT > 0) this.lockFlashT -= dt;
+    if (this.levelOverlayT > 0) this.levelOverlayT -= dt;
+    if (this.shakeT > 0) this.shakeT -= dt;
+    this.dropTrail = this.dropTrail.filter(t => performance.now() - t.time < CONFIG.DROP_TRAIL_MS);
+    for (const p of this.renderer.scorePops) p.t += dt;
+  }
+  loop(now) {
+    if (!this.lastFrame) this.lastFrame = now;
+    let frameDt = now - this.lastFrame;
+    this.lastFrame = now;
+    if (frameDt > 100) frameDt = 100;
+    this.accumulator += frameDt;
+    while (this.accumulator >= CONFIG.FIXED_DT) {
+      this.update(CONFIG.FIXED_DT);
+      this.accumulator -= CONFIG.FIXED_DT;
+    }
+    this.frameCount++;
+    this.fpsTimer += frameDt;
+    if (this.fpsTimer >= 1000) {
+      this.fps = this.frameCount;
+      this.frameCount = 0;
+      this.fpsTimer = 0;
+      if (this.fps < 50) this.particlesEnabled = false;
+      else if (this.fps >= 55) this.particlesEnabled = true;
+    }
+    this.renderer.draw();
+    requestAnimationFrame(t => this.loop(t));
+  }
+}
+
+const game = new Game();
+window.game = game;
+
+// Bridge save/load for platform integration
+window.__gameSaveData = () => {
+  try { return { highScores: game.scores.highScores }; } catch(_) { return {}; }
+};
+window.__gameLoadData = (d) => {
+  if (!d || !d.highScores) return;
+  try {
+    localStorage.setItem('bauhaus-tetris-scores', JSON.stringify(d.highScores));
+    if (game && game.scores) game.scores.highScores = d.highScores;
+  } catch(_) {}
+};
+
+// Also push high score to bridge after game over
+const _origGameOver = Game.prototype.gameOver;
+Game.prototype.gameOver = function() {
+  _origGameOver.call(this);
+  if (window.gameBridge && this.scores) {
+    window.gameBridge.save({ highScores: this.scores.highScores }).catch(() => {});
+  }
+};
+  </script>
+</body>
+</html>

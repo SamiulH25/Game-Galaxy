@@ -1,0 +1,26 @@
+{
+  "id": "001-asteroid-blaster",
+  "title": "Deep Sea Defender",
+  "description": "Plunge into the abyss! Pilot your submarine through ocean depths, fend off sea creatures, and collect treasure. How deep can you dive?",
+  "detailedDescription": "Take the helm of a compact research submarine and descend into an uncharted ocean trench. Bioluminescent creatures patrol the depths, ancient ruins hide valuable treasures, and the pressure mounts with every meter. Upgrade your sub's hull, sonar, and harpoons between dives. The deeper you go, the stranger — and more dangerous — the wildlife becomes. With a dynamic depth system and procedurally placed hazards, no two dives are the same.",
+  "planetName": "Asteria",
+  "solarSystemId": "alpha-centauri",
+  "solarSystemName": "Alpha Centauri",
+  "planetColor": "#44bbaa",
+  "planetSize": 1.2,
+  "orbitRadius": 8,
+  "orbitSpeed": 0.5,
+  "thumbnail": "",
+  "screenshots": [],
+  "difficulty": "Medium",
+  "controls": "Arrow keys or WASD to move your submarine. Click to fire harpoons. Collect treasure orbs for points. Avoid sea creature collisions. Between dives, spend your points on upgrades.",
+  "genre": "Action, Arcade, Shooter",
+  "tags": ["action", "shooter", "arcade"],
+  "characteristics": {
+    "type": "rings",
+    "ringColor": "#44bbaa",
+    "ringWidth": 0.8,
+    "ringOpacity": 0.6,
+    "ringCount": 3
+  }
+}

@@ -1,0 +1,6 @@
+{
+	"/": [],
+	"/account": [
+		"src/routes/account/+page.ts"
+	]
+}

@@ -1,0 +1,26 @@
+{
+  "id": "002-space-pong",
+  "title": "Neon Pong",
+  "description": "Retro pong bathed in neon light. Fast-paced rallies, power-ups, and a pulsating arcade grid. First to 7 wins.",
+  "detailedDescription": "Classic pong reimagined through a cyberpunk neon lens. The playfield pulses with animated grid lines and the ball leaves a luminous trail as it accelerates with each rally. Two local players face off in a best-of-13 match, with randomized power-ups — speed boost, wide paddle, multi-ball, and shield — dropping into play at critical moments. The neon aesthetic shifts color palettes between rounds, keeping every match visually fresh.",
+  "planetName": "Pongaris",
+  "solarSystemId": "alpha-centauri",
+  "solarSystemName": "Alpha Centauri",
+  "planetColor": "#ff44aa",
+  "planetSize": 1.0,
+  "orbitRadius": 12,
+  "orbitSpeed": 0.3,
+  "thumbnail": "",
+  "screenshots": [],
+  "difficulty": "Easy",
+  "controls": "Player 1: W/S keys to move paddle. Player 2: Arrow Up/Down to move paddle. First to 7 points wins. Pick up glowing power-ups as they appear on the playfield for temporary advantages.",
+  "genre": "Sports, Arcade, Retro",
+  "tags": ["sports", "retro", "classic", "arcade"],
+  "characteristics": {
+    "type": "moons",
+    "moonCount": 1,
+    "moonSize": 0.2,
+    "moonOrbitRadius": 2.2,
+    "moonColor": "#ff44aa"
+  }
+}

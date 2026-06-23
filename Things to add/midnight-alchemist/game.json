@@ -1,0 +1,17 @@
+{
+
+  "id": "midnight-alchemist",
+
+  "title": "Midnight Alchemist",
+
+  "description": "Victorian pharmacy sim — brew potions by night, gather ingredients by day, serve six patrons at once.",
+
+  "thumbnail": "thumbnail.svg",
+
+  "entry": "index.html",
+
+  "tags": ["simulation", "strategy", "hosted"]
+
+}
+
+

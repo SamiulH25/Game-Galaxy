@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Template Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #0a0a1a;
+            color: #ffffff;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        #game-container {
+            text-align: center;
+            padding: 2rem;
+        }
+        canvas {
+            border: 2px solid #333;
+            background: #111;
+        }
+        h1 {
+            margin-bottom: 1rem;
+            color: #00ff88;
+        }
+        .instructions {
+            margin-top: 1rem;
+            color: #888;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <h1>Template Game</h1>
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div class="instructions">
+            <p>Replace this template with your actual game logic.</p>
+            <p>Use the canvas element to draw your game.</p>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Simple game loop example
+        function gameLoop() {
+            // Clear canvas
+            ctx.fillStyle = '#111';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw some sample content
+            ctx.fillStyle = '#00ff88';
+            ctx.font = '24px Courier New';
+            ctx.textAlign = 'center';
+            ctx.fillText('Template Game', canvas.width / 2, canvas.height / 2 - 20);
+            ctx.fillStyle = '#888';
+            ctx.font = '16px Courier New';
+            ctx.fillText('Replace with your game logic', canvas.width / 2, canvas.height / 2 + 20);
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Start the game loop
+        gameLoop();
+    </script>
+</body>
+</html>

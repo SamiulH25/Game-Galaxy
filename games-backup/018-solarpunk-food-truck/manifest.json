@@ -1,0 +1,20 @@
+{
+  "id": "018-solarpunk-food-truck",
+  "title": "Solarpunk Food Truck",
+  "description": "Run a solarpunk food truck â€” manage ingredients, serve eco-conscious customers, upgrade your solar grid, and build a sustainable culinary empire.",
+  "detailedDescription": "Build and run a solar-powered food truck in a hopeful, green future where sustainability meets street food. Each day is divided into three phases: Preparation (stock up on ingredients from local farms and forecast customer demand), Service (cook and serve dishes in real-time â€” manage queue, quality, and speed), and Upkeep (upgrade your solar array, buy new equipment, unlock recipes, and manage your budget). The reactive economy shifts based on season, weather, and customer trends. Will you build a neighborhood staple or a culinary empire powered entirely by the sun?",
+  "planetName": "Verdantia",
+  "solarSystemId": "terra-nova",
+  "solarSystemName": "Terra Nova",
+  "planetColor": "#66dd88",
+  "planetSize": 1.3,
+  "orbitRadius": 10,
+  "orbitSpeed": 0.35,
+  "thumbnail": "",
+  "screenshots": [],
+  "difficulty": "Medium",
+  "controls": "Prep phase: click ingredients to stock up, review the forecast. Service phase: click customer orders, drag ingredients to the cooking station, serve when ready. Upkeep: click upgrades to purchase. Budget and reputation are tracked automatically.",
+  "genre": "Simulation, Management, Strategy, Solarpunk",
+  "tags": ["simulation", "management", "solarpunk", "strategy"],
+  "characteristics": { "type": "atmosphere", "atmoColor": "#66dd88", "atmoIntensity": 0.5 }
+}
