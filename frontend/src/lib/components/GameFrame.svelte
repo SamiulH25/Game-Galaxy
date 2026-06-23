@@ -3,13 +3,16 @@
   import { showAuth } from '$lib/stores/galaxy';
   import { isAuthenticated } from '$lib/stores/auth';
   import { settings } from '$lib/stores/settings';
-  import { fetchSave, saveGame, unlockAchievement, submitScore } from '$lib/api';
+  import { fetchSave, saveGame, unlockAchievement, submitScore, getApiToken } from '$lib/api';
   import { fade } from 'svelte/transition';
   import { play } from '$lib/audio';
   import AchievementToast from './AchievementToast.svelte';
 
   let game = $derived($showGame);
   let currentGameId = $state<string | null>(null);
+
+  // Engine-based games (Godot/Unity WebGL) use direct API calls instead of bridge.js
+  let isEngineGame = $derived(game?.type && game.type !== 'html');
 
   // Sync currentGameId when a game opens so bridge messages can use it
   $effect(() => {
@@ -18,6 +21,19 @@
   let toastMsg = $state<string | null>(null);
   let toastTimer: ReturnType<typeof setTimeout> | null = null;
   let achToast = $state<{ title: string; icon: string } | null>(null);
+  let iframeEl = $state<HTMLIFrameElement | null>(null);
+
+  /** Send auth token to engine-based games after iframe loads */
+  function onIframeLoad() {
+    if (!isEngineGame || !iframeEl || !$isAuthenticated) return;
+    const token = getApiToken();
+    if (!token) return;
+    iframeEl.contentWindow?.postMessage({
+      type: 'galaxy-auth',
+      token: token,
+      gameId: game.id
+    }, '*');
+  }
 
   function showToast(msg: string) {
     toastMsg = msg;
@@ -136,12 +152,14 @@
         <h3>{game.title}</h3>
       </div>
       <div class="game-frame-actions">
-        <button class="gf-btn" onclick={handleSave}>Save</button>
-        <button class="gf-btn" onclick={handleLoad}>Load</button>
+        {#if !isEngineGame}
+          <button class="gf-btn" onclick={handleSave}>Save</button>
+          <button class="gf-btn" onclick={handleLoad}>Load</button>
+        {/if}
         <button class="gf-btn gf-close" onclick={close}>Close</button>
       </div>
     </div>
-    <iframe id="game-iframe" src="/games/{game.id}/index.html" sandbox="allow-scripts allow-same-origin" title="Game"></iframe>
+    <iframe bind:this={iframeEl} src="/games/{game.id}/index.html" onload={onIframeLoad} sandbox="allow-scripts allow-same-origin" title="Game"></iframe>
     {#if toastMsg}
       <div class="save-toast" transition:fade>{toastMsg}</div>
     {/if}

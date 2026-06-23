@@ -43,6 +43,7 @@ class GameManifestResponse(BaseModel):
     difficulty: str | None = None
     controls: str | None = None
     genre: str | None = None
+    type: str = "html"
 
 
 class StarProperties(BaseModel):

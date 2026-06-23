@@ -21,6 +21,7 @@ MIME_OVERRIDES: dict[str, str] = {
     ".css": "text/css; charset=utf-8",
     ".html": "text/html; charset=utf-8",
     ".wasm": "application/wasm",
+    ".pck": "application/octet-stream",
 }
 
 
