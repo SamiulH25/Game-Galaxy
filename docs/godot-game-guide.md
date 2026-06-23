@@ -124,6 +124,8 @@ Your game will appear in the galaxy with the planet name and color you specified
 
 Open the galaxy portal, find your planet, and click **Play**. The game loads in an iframe with the auth token automatically delivered.
 
+> **Note:** Godot 4.7 has an issue with headless CLI export (`--export-release` doesn't find export presets in headless mode). To export, open the project in the Godot GUI editor, go to **Project > Export**, select the HTML5 preset, and click **Export Project**. The files will be generated in the game directory.
+
 ## API Reference
 
 ### GalaxyAPI
