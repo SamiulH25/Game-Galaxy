@@ -141,7 +141,7 @@
         <button class="gf-btn gf-close" onclick={close}>Close</button>
       </div>
     </div>
-    <iframe id="game-iframe" src="/games/{game.id}/index.html" sandbox="allow-scripts" title="Game"></iframe>
+    <iframe id="game-iframe" src="/games/{game.id}/index.html" sandbox="allow-scripts allow-same-origin" title="Game"></iframe>
     {#if toastMsg}
       <div class="save-toast" transition:fade>{toastMsg}</div>
     {/if}

@@ -1,0 +1,32 @@
+{
+  "id": "023-neon-siege",
+  "title": "Neon Siege",
+  "description": "Geometry Wars reimagined — twin-stick neon arena combat on a living WebGL2 grid with bloom, lumens, and escalating chaos.",
+  "detailedDescription": "Inspired by the legendary Geometry Wars twin-stick shooters, Neon Siege drops you into a pulsing vector grid arena where WASD moves your ship and the mouse aims independent fire. Survive endless waves of Wanderers, Grunts, Spinners, Serpents, and Chargers while collecting Lumens to skyrocket your score multiplier. Detonate Nova Bombs when cornered, unlock spread-fire at 10,000 points, and chase the leaderboard. Built entirely on WebGL2 with real-time bloom post-processing, additive particle bursts, and shader-driven neon visuals.",
+  "planetName": "Luminara",
+  "solarSystemId": "alpha-centauri",
+  "solarSystemName": "Alpha Centauri",
+  "planetColor": "#00ffcc",
+  "planetSize": 1.1,
+  "orbitRadius": 10,
+  "orbitSpeed": 0.45,
+  "thumbnail": "thumbnail.svg",
+  "screenshots": [],
+  "difficulty": "Hard",
+  "controls": "WASD to move. Mouse to aim and fire. E or Right-click for Nova Bomb. Space to start. P to pause.",
+  "genre": "Action, Arcade, Shooter",
+  "tags": ["shooter", "arcade", "webgl", "twin-stick", "unique"],
+  "characteristics": {
+    "type": "atmosphere",
+    "atmosphereColor": "#00ffcc",
+    "atmosphereOpacity": 0.35,
+    "atmosphereScale": 1.4
+  },
+  "achievements": [
+    { "id": "first_blood", "title": "First Blood", "description": "Destroy your first enemy", "icon": "bolt", "hidden": false },
+    { "id": "multiplier_10", "title": "Multitastic", "description": "Reach a x10 score multiplier", "icon": "star", "hidden": false },
+    { "id": "bomb_master", "title": "Nova Wrath", "description": "Clear 50 enemies with Nova Bombs", "icon": "moon", "hidden": false },
+    { "id": "survivor", "title": "Grid Survivor", "description": "Survive for 3 minutes", "icon": "trophy", "hidden": false },
+    { "id": "centurion", "title": "Centurion", "description": "Score 100,000 points in one run", "icon": "diamond", "hidden": false }
+  ]
+}

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Neon Siege</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="../bridge.js"></script>
+</head>
+<body>
+  <canvas id="game-canvas"></canvas>
+
+  <div id="hud">
+    <div class="hud-left">
+      <div class="hud-stat"><span class="label">SCORE</span><span id="hud-score" class="value">0</span></div>
+      <div class="hud-stat"><span class="label">MULT</span><span id="hud-mult" class="value mult">x1</span></div>
+    </div>
+    <div class="hud-center">
+      <div class="hud-stat"><span class="label">TIME</span><span id="hud-time" class="value">0:00</span></div>
+    </div>
+    <div class="hud-right">
+      <div class="hud-stat"><span class="label">LIVES</span><span id="hud-lives" class="value">♥♥♥</span></div>
+      <div class="hud-stat"><span class="label">BOMBS</span><span id="hud-bombs" class="value">●●●</span></div>
+    </div>
+  </div>
+
+  <div id="touch-zone" class="touch-zone" aria-hidden="true"></div>
+
+  <div id="overlay" class="overlay">
+    <div class="overlay-card">
+      <h1 class="title">NEON SIEGE</h1>
+      <p class="tagline">GEOMETRY WARS · WEBGL2</p>
+      <div id="overlay-body" class="overlay-body"></div>
+      <p class="hint">WASD move · Mouse aim · E bomb · Space start</p>
+    </div>
+  </div>
+
+  <script src="js/renderer.js?v=3"></script>
+  <script src="js/game.js?v=3"></script>
+  <script src="js/main.js?v=3"></script>
+</body>
+</html>

@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException, status
 
+from app.config import settings
 from app.schemas.game import GameManifestResponse, SolarSystemInfo
-from app.services.game_scanner import games_cache, system_cache
+from app.services.game_scanner import games_cache, scan_games, system_cache
 
 router = APIRouter(prefix="/api/games", tags=["games"])
 
@@ -14,6 +15,18 @@ async def list_games():
 @router.get("/systems", response_model=list[SolarSystemInfo])
 async def list_systems():
     return system_cache
+
+
+@router.post("/rescan")
+async def rescan_games():
+    """Re-scan game manifests from disk (dev workflow)."""
+    if not settings.debug:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Rescan is only available when DEBUG=true",
+        )
+    await scan_games(str(settings.games_path))
+    return {"ok": True, "count": len(games_cache)}
 
 
 @router.get("/{game_id}", response_model=GameManifestResponse)
