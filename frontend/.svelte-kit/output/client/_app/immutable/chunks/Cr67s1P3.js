@@ -1,0 +1,1 @@
+import{t as e}from"./DK3Fl9T5.js";import{nt as t}from"./hDj-oAFh.js";import"./D1XvVewT.js";var n=e({enableGalaxyRender:()=>i,galaxyRenderReady:()=>r}),r=t(!1);function i(){r.set(!0)}export{r as n,n as r,i as t};

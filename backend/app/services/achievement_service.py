@@ -2,9 +2,10 @@ from datetime import datetime, timezone
 from sqlalchemy import select, func, distinct
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.db import UserAchievement, GameSave, User
+from app.models.db import UserAchievement, GameSave, LeaderboardEntry, User
 from app.services.game_scanner import games_cache
 from app.services.universal_achievement_scanner import universal_achievements_cache
+from app.validators import validate_achievement_id
 
 
 async def unlock_achievement(
@@ -14,6 +15,9 @@ async def unlock_achievement(
     achievement_id: str,
 ) -> dict:
     """Unlock a per-game achievement. Idempotent — safe to call multiple times."""
+    game = games_cache.get(game_id, {})
+    validate_achievement_id(achievement_id, game)
+
     key = f"game:{game_id}:{achievement_id}"
 
     result = await db.execute(
@@ -47,21 +51,18 @@ async def check_universal_achievements(
     """Check which universal achievements the user qualifies for and unlock any new ones."""
     newly_unlocked = []
 
-    # Count distinct games played
     result = await db.execute(
         select(func.count(distinct(GameSave.game_id)))
         .where(GameSave.user_id == user_id)
     )
     games_played = result.scalar() or 0
 
-    # Count total saves
     result = await db.execute(
         select(func.count(GameSave.id))
         .where(GameSave.user_id == user_id)
     )
     total_saves = result.scalar() or 0
 
-    # Count leaderboard entries
     result = await db.execute(
         select(func.count(LeaderboardEntry.id))
         .where(LeaderboardEntry.user_id == user_id)
@@ -71,18 +72,16 @@ async def check_universal_achievements(
     total_games = len(games_cache)
     now = datetime.now(timezone.utc)
 
+    unlocked_result = await db.execute(
+        select(UserAchievement.achievement_key).where(UserAchievement.user_id == user_id)
+    )
+    unlocked_keys = set(unlocked_result.scalars().all())
+
     for ach in universal_achievements_cache:
         aid = ach["id"]
         key = f"universal:{aid}"
 
-        # Check if already unlocked
-        result = await db.execute(
-            select(UserAchievement).where(
-                UserAchievement.user_id == user_id,
-                UserAchievement.achievement_key == key,
-            )
-        )
-        if result.scalar_one_or_none():
+        if key in unlocked_keys:
             continue
 
         should_unlock = False
@@ -133,7 +132,6 @@ async def get_user_achievements(
     user_achs = result.scalars().all()
     unlocked_keys = {ua.achievement_key for ua in user_achs}
 
-    # Build per-game achievements from manifests
     per_game: dict[str, list] = {}
     for gid, game in games_cache.items():
         game_achs = game.get("achievements", [])

@@ -1,7 +1,8 @@
-import { et as noop, i as tick$1, r as settled, t as index_server_exports, x as writable } from "./index-server.js";
-import { d as get_message, f as get_status, m as base64_decode, n as TRAILING_SLASH_PARAM, r as create_remote_key, t as INVALIDATED_PARAM, v as noop$1 } from "./shared.js";
+import { i as tick$1, r as settled, t as index_server_exports } from "./index-server.js";
+import { d as get_message, f as get_status, m as base64_decode, n as TRAILING_SLASH_PARAM, r as create_remote_key, t as INVALIDATED_PARAM, v as noop } from "./shared.js";
 import { u as base } from "./internal.js";
 import { S as compact, f as make_trackable, g as add_data_suffix, h as noop_span, l as decode_params, p as normalize_path, s as hash, u as decode_pathname } from "./exports.js";
+import { i as writable, q as noop$1 } from "./shared2.js";
 import "./index-server2.js";
 import "./internal2.js";
 import { HttpError, Redirect, SvelteKitError } from "@sveltejs/kit/internal";
@@ -65,7 +66,7 @@ function notifiable_store(value) {
 		subscribe
 	};
 }
-var updated_listener = { v: noop$1 };
+var updated_listener = { v: noop };
 function create_updated_store() {
 	const { set, subscribe } = writable(false);
 	return {
@@ -92,7 +93,7 @@ function is_external_url(url, base, hash_routing) {
 var page;
 var navigating;
 var updated;
-var is_legacy = noop.toString().includes("$$") || /function \w+\(\) \{\}/.test(noop.toString());
+var is_legacy = noop$1.toString().includes("$$") || /function \w+\(\) \{\}/.test(noop$1.toString());
 var placeholder_url = "a:";
 if (is_legacy) {
 	page = {
@@ -311,7 +312,7 @@ function clear_onward_history(current_history_index, current_navigation_index) {
 function native_navigation(url, replace = false) {
 	if (replace) location.replace(url.href);
 	else location.href = url.href;
-	return new Promise(noop$1);
+	return new Promise(noop);
 }
 /**
 * Checks whether a service worker is registered, and if it is,
@@ -649,7 +650,7 @@ async function load_node({ loader, parent, url, params, route, server_data_node 
 				if (is_tracking) depends(resolved.href);
 				return promise;
 			},
-			setHeaders: noop$1,
+			setHeaders: noop,
 			depends,
 			parent() {
 				if (is_tracking) uses.parent = true;
@@ -767,8 +768,8 @@ async function load_route({ id, invalidating, url, params, route, preload }) {
 	}
 	const { errors, layouts, leaf } = route;
 	const loaders = [...layouts, leaf];
-	errors.forEach((loader) => loader?.().catch(noop$1));
-	loaders.forEach((loader) => loader?.[1]().catch(noop$1));
+	errors.forEach((loader) => loader?.().catch(noop));
+	loaders.forEach((loader) => loader?.[1]().catch(noop));
 	/** @type {import('types').ServerNodesResponse | import('types').ServerRedirectNode | null} */
 	let server_data = null;
 	const url_changed = current.url ? id !== get_page_key(current.url) : false;
@@ -830,7 +831,7 @@ async function load_route({ id, invalidating, url, params, route, preload }) {
 			server_data_node: create_data_node(server_data_node === void 0 && loader[0] ? { type: "skip" } : server_data_node ?? null, loader[0] ? previous?.server : void 0)
 		});
 	});
-	for (const p of branch_promises) p.catch(noop$1);
+	for (const p of branch_promises) p.catch(noop);
 	/** @type {Array<import('./types.js').BranchNode | undefined>} */
 	const branch = [];
 	for (let i = 0; i < loaders.length; i += 1) if (loaders[i]) try {
@@ -1093,7 +1094,7 @@ function _before_navigate({ url, type, intent, delta, event, scroll }) {
 *   event?: Event
 * }} opts
 */
-async function navigate({ type, url, popped, keepfocus, noscroll, replace_state, state = {}, redirect_count = 0, nav_token = {}, accept = noop$1, block = noop$1, event }) {
+async function navigate({ type, url, popped, keepfocus, noscroll, replace_state, state = {}, redirect_count = 0, nav_token = {}, accept = noop, block = noop, event }) {
 	const prev_token = token;
 	token = nav_token;
 	const intent = await get_navigation_intent(url, false);
@@ -1471,7 +1472,7 @@ function create_navigation(current, intent, url, type, target_scroll = null) {
 		fulfil = f;
 		reject = r;
 	});
-	complete.catch(noop$1);
+	complete.catch(noop);
 	return {
 		navigation: {
 			from: {

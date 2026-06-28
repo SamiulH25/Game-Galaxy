@@ -1,33 +1,41 @@
 <script lang="ts">
   import { showAuth } from '$lib/stores/galaxy';
   import { loginUser, registerUser } from '$lib/stores/auth';
+  import { parseApiError } from '$lib/api';
   import { fly, fade } from 'svelte/transition';
   import { play } from '$lib/audio';
+  import { lockBodyScroll } from '$lib/stores/viewport';
+  import { trapFocus } from '$lib/utils/focusTrap';
+
+  let authCardEl = $state<HTMLElement | null>(null);
 
   let isLogin = $state(true);
   let username = $state('');
   let password = $state('');
   let error = $state('');
+  let submitting = $state(false);
 
   function close() { showAuth.set(false); reset(); play('cancel'); }
   function reset() { username = ''; password = ''; error = ''; }
   function toggleMode() { isLogin = !isLogin; error = ''; play('click'); }
 
   async function handleSubmit() {
+    if (submitting) return;
     error = '';
     play('select');
+    submitting = true;
     try {
       if (isLogin) { await loginUser(username, password); }
       else { await registerUser(username, password); }
       play('success');
       close();
-    } catch (err: any) {
-      let msg = 'Something went wrong.';
-      try { const parsed = JSON.parse(err.message); msg = parsed.detail || msg; } catch {}
-      error = msg;
+    } catch (err: unknown) {
+      error = parseApiError(err);
       play('error');
+    } finally {
+      submitting = false;
+      password = '';
     }
-    password = '';
   }
 
   function onKeydown(e: KeyboardEvent) {
@@ -40,6 +48,17 @@
       close();
     }
   }
+
+  $effect(() => {
+    if (!$showAuth) return;
+    const unlock = lockBodyScroll();
+    return unlock;
+  });
+
+  $effect(() => {
+    if (!$showAuth || !authCardEl) return;
+    return trapFocus(authCardEl);
+  });
 </script>
 
 <svelte:window onkeydown={onKeydown} />
@@ -47,7 +66,7 @@
 {#if $showAuth}
   <div class="auth-overlay" role="dialog" aria-modal="true" tabindex="-1" transition:fade={{ duration: 200 }} onclick={onBackdropClick} onkeydown={(e) => e.key === 'Escape' && close()}>
     <div class="auth-backdrop"></div>
-    <div class="auth-card">
+    <div class="auth-card" bind:this={authCardEl}>
       <div class="auth-accent-line"></div>
       <div class="auth-header">
         <h2>{isLogin ? 'Log In' : 'Create Account'}</h2>
@@ -65,7 +84,14 @@
         {#if error}
           <div class="auth-error" role="alert">{error}</div>
         {/if}
-        <button type="submit" class="auth-submit">{isLogin ? 'Log In' : 'Create Account'}</button>
+        <button type="submit" class="auth-submit" disabled={submitting}>
+          {#if submitting}
+            <span class="auth-spinner"></span>
+            {isLogin ? 'Signing in…' : 'Creating…'}
+          {:else}
+            {isLogin ? 'Log In' : 'Create Account'}
+          {/if}
+        </button>
       </form>
       <p class="auth-toggle">
         <span>{isLogin ? "Don't have an account?" : 'Already have an account?'}</span>
@@ -91,8 +117,11 @@
   .auth-field input::placeholder { color: var(--text-muted); }
   .auth-error { margin: 0 var(--space-lg) var(--space-md); background: var(--error-bg); border: 1px solid var(--error-border); color: var(--error); padding: var(--space-xs) var(--space-sm); border-radius: var(--radius-sm); font-size: var(--fs-xs); animation: shakeIn 0.3s var(--ease-out); }
   @keyframes shakeIn { 0% { opacity: 0; transform: translateX(-8px); } 60% { transform: translateX(4px); } 100% { opacity: 1; transform: translateX(0); } }
-  .auth-submit { margin: 0 var(--space-lg) var(--space-md); width: calc(100% - var(--space-lg) * 2); padding: clamp(8px, 0.7vw, 11px); background: var(--accent); color: var(--bg-deepest); border: none; border-radius: var(--radius-sm); font-size: var(--fs-sm); font-weight: 700; cursor: pointer; font-family: 'DM Sans', system-ui, sans-serif; min-height: 44px; transition: background 0.15s var(--ease-out), box-shadow 0.15s var(--ease-out); }
-  .auth-submit:hover { background: #f0b848; box-shadow: 0 4px 20px rgba(232,168,56,0.3); }
+  .auth-submit { margin: 0 var(--space-lg) var(--space-md); width: calc(100% - var(--space-lg) * 2); padding: clamp(8px, 0.7vw, 11px); background: var(--accent); color: var(--bg-deepest); border: none; border-radius: var(--radius-sm); font-size: var(--fs-sm); font-weight: 700; cursor: pointer; font-family: 'DM Sans', system-ui, sans-serif; min-height: 44px; transition: background 0.15s var(--ease-out), box-shadow 0.15s var(--ease-out); display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+  .auth-submit:hover:not(:disabled) { background: #f0b848; box-shadow: 0 4px 20px rgba(232,168,56,0.3); }
+  .auth-submit:disabled { opacity: 0.75; cursor: wait; }
+  .auth-spinner { width: 14px; height: 14px; border: 2px solid rgba(4,4,18,0.2); border-top-color: var(--bg-deepest); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
   .auth-toggle { text-align: center; font-size: var(--fs-xs); color: var(--text-muted); padding: 0 var(--space-lg) var(--space-lg); }
   .link-btn { background: none; border: none; color: var(--accent); cursor: pointer; font-size: var(--fs-xs); font-family: 'DM Sans', system-ui, sans-serif; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; transition: color 0.15s var(--ease-out); }
   .link-btn:hover { color: #f0b848; }

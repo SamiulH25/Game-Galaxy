@@ -26,7 +26,7 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
     if result.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Username already taken",
+            detail="Registration failed — try a different username",
         )
 
     user = User(username=body.username, password_hash=hash_password(body.password))

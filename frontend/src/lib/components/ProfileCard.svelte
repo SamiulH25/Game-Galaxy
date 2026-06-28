@@ -1,5 +1,6 @@
 <script lang="ts">
   import { isAuthenticated, user } from '$lib/stores/auth';
+  import { showAuth } from '$lib/stores/galaxy';
   import { profile, profileStats, recentAchievements, loadProfile, loadAchievements } from '$lib/stores/social';
   import { goto } from '$app/navigation';
   import { play } from '$lib/audio';
@@ -34,7 +35,7 @@
       <span class="card-title">Log In</span>
       <span class="card-desc">Sign in to track achievements and scores</span>
     </div>
-    <button class="card-btn" onclick={() => { play('click'); goto('/account'); }}>Sign In</button>
+    <button class="card-btn" onclick={() => { play('click'); showAuth.set(true); }}>Sign In</button>
   </div>
 {:else}
   <div class="card" transition:fade>

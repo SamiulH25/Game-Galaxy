@@ -22,6 +22,7 @@
       "_internal.js",
       "_exports.js",
       "_shared.js",
+      "_shared2.js",
       "_index-server2.js"
     ]
   },
@@ -33,15 +34,26 @@
     "file": "chunks/exports.js",
     "name": "exports"
   },
+  "_galaxyRender2.js": {
+    "file": "chunks/galaxyRender2.js",
+    "name": "galaxyRender",
+    "imports": [
+      "_shared2.js",
+      "_index-server2.js"
+    ]
+  },
   "_index-server.js": {
     "file": "chunks/index-server.js",
-    "name": "index-server"
+    "name": "index-server",
+    "imports": [
+      "_shared2.js"
+    ]
   },
   "_index-server2.js": {
     "file": "chunks/index-server2.js",
     "name": "index-server",
     "imports": [
-      "_index-server.js"
+      "_shared2.js"
     ]
   },
   "_internal.js": {
@@ -53,28 +65,55 @@
     "name": "internal",
     "imports": [
       "_index-server.js",
-      "_internal.js"
+      "_internal.js",
+      "_shared2.js"
+    ],
+    "dynamicImports": [
+      "src/hooks.server.ts"
     ]
   },
-  "_settings.js": {
-    "file": "chunks/settings.js",
-    "name": "settings",
+  "_navigation.js": {
+    "file": "chunks/navigation.js",
+    "name": "navigation",
     "imports": [
-      "_index-server.js",
+      "_client.js"
+    ]
+  },
+  "_network.js": {
+    "file": "chunks/network.js",
+    "name": "network",
+    "imports": [
+      "_shared2.js",
       "_index-server2.js"
+    ]
+  },
+  "_progression.js": {
+    "file": "chunks/progression.js",
+    "name": "progression",
+    "imports": [
+      "_shared2.js",
+      "_index-server2.js"
+    ],
+    "dynamicImports": [
+      "_galaxyRender2.js",
+      "_progression.js"
     ]
   },
   "_shared.js": {
     "file": "chunks/shared.js",
     "name": "shared"
   },
+  "_shared2.js": {
+    "file": "chunks/shared2.js",
+    "name": "shared"
+  },
   "_social.js": {
     "file": "chunks/social.js",
     "name": "social",
     "imports": [
-      "_index-server.js",
-      "_client.js",
-      "_index-server2.js"
+      "_shared2.js",
+      "_index-server2.js",
+      "_progression.js"
     ]
   },
   "_utils.js": {
@@ -111,14 +150,29 @@
     "src": "node_modules/@sveltejs/kit/src/runtime/server/index.js",
     "isEntry": true,
     "imports": [
-      "_index-server.js",
       "_env.js",
       "_internal2.js",
       "_utils.js",
       "_internal.js",
       "_exports.js",
       "_shared.js",
+      "_shared2.js",
       "_index-server2.js"
+    ]
+  },
+  "src/hooks.server.ts": {
+    "file": "entries/hooks.server.js",
+    "name": "entries/hooks.server",
+    "src": "src/hooks.server.ts",
+    "isEntry": true
+  },
+  "src/lib/stores/galaxyRender.ts": {
+    "file": "chunks/galaxyRender.js",
+    "name": "galaxyRender",
+    "src": "src/lib/stores/galaxyRender.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "_galaxyRender2.js"
     ]
   },
   "src/routes/+layout.svelte": {
@@ -128,11 +182,14 @@
     "isEntry": true,
     "imports": [
       "_index-server.js",
+      "_shared2.js",
+      "_progression.js",
       "_audio.js",
-      "_settings.js"
+      "_galaxyRender2.js",
+      "_network.js"
     ],
     "css": [
-      "_app/immutable/assets/_layout.D87to81v.css"
+      "_app/immutable/assets/_layout.C7j-_oZS.css"
     ]
   },
   "src/routes/+page.svelte": {
@@ -142,12 +199,30 @@
     "isEntry": true,
     "imports": [
       "_index-server.js",
-      "_social.js",
+      "_navigation.js",
+      "_shared2.js",
+      "_index-server2.js",
+      "_progression.js",
       "_audio.js",
-      "_settings.js"
+      "_galaxyRender2.js",
+      "_network.js",
+      "_social.js"
     ],
     "css": [
-      "_app/immutable/assets/_page.Cnldvu3x.css"
+      "_app/immutable/assets/_page.C8oCbICc.css"
+    ]
+  },
+  "src/routes/about/+page.svelte": {
+    "file": "entries/pages/about/_page.svelte.js",
+    "name": "entries/pages/about/_page.svelte",
+    "src": "src/routes/about/+page.svelte",
+    "isEntry": true,
+    "imports": [
+      "_index-server.js",
+      "_navigation.js"
+    ],
+    "css": [
+      "_app/immutable/assets/_page.BH_rVo4u.css"
     ]
   },
   "src/routes/account/+page.svelte": {
@@ -157,12 +232,16 @@
     "isEntry": true,
     "imports": [
       "_index-server.js",
-      "_social.js",
+      "_navigation.js",
       "_client.js",
-      "_audio.js"
+      "_shared2.js",
+      "_index-server2.js",
+      "_progression.js",
+      "_audio.js",
+      "_social.js"
     ],
     "css": [
-      "_app/immutable/assets/_page.yblGJbyZ.css"
+      "_app/immutable/assets/_page.WWTGza-P.css"
     ]
   },
   "src/routes/account/+page.ts": {

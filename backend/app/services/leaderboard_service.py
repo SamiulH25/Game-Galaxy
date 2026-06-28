@@ -1,10 +1,17 @@
 from datetime import datetime, timezone
 import json
 
-from sqlalchemy import select, func, desc, text
+from sqlalchemy import select, func, desc, text, distinct
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.db import LeaderboardEntry, User
+
+SCORE_RANK_SQL = text("""
+    SELECT COUNT(*) AS cnt FROM leaderboard_entries
+    WHERE game_id = :game_id
+      AND id != :entry_id
+      AND json_extract(score_data, '$.score') + 0.0 > :user_score
+""")
 
 
 async def submit_score(
@@ -17,7 +24,6 @@ async def submit_score(
     now = datetime.now(timezone.utc)
     score_json = json.dumps(score_data)
 
-    # Check existing entry for this user + game
     result = await db.execute(
         select(LeaderboardEntry).where(
             LeaderboardEntry.user_id == user_id,
@@ -32,16 +38,14 @@ async def submit_score(
             try:
                 old_score = json.loads(existing.score_data).get("score")
                 if old_score is not None and new_score <= old_score:
-                    # Not better than existing — rank stays the same
-                    return await _build_submit_response(db, game_id, user_id, existing.id)
+                    return await _build_submit_response(db, game_id, existing)
             except (ValueError, TypeError):
                 pass
-        # Update existing entry
         existing.score_data = score_json
         existing.submitted_at = now
         await db.commit()
         await db.refresh(existing)
-        entry_id = existing.id
+        entry = existing
     else:
         entry = LeaderboardEntry(
             game_id=game_id,
@@ -52,58 +56,52 @@ async def submit_score(
         db.add(entry)
         await db.commit()
         await db.refresh(entry)
-        entry_id = entry.id
 
-    return await _build_submit_response(db, game_id, user_id, entry_id)
+    return await _build_submit_response(db, game_id, entry)
 
 
 async def _build_submit_response(
     db: AsyncSession,
     game_id: str,
-    user_id: int,
-    entry_id: int,
+    entry: LeaderboardEntry,
 ) -> dict:
-    """Calculate the user's rank after submission by counting entries with higher scores."""
-    # Get the submitted entry's score
-    result = await db.execute(
-        select(LeaderboardEntry).where(LeaderboardEntry.id == entry_id)
-    )
-    entry = result.scalar_one_or_none()
-
-    rank = None
-    if entry:
-        try:
-            user_score_val = json.loads(entry.score_data).get("score")
-            if user_score_val is not None:
-                # Count entries with a strictly better score
-                score_sql = text("""
-                    SELECT COUNT(*) AS cnt FROM leaderboard_entries
-                    WHERE game_id = :game_id
-                      AND id != :entry_id
-                      AND json_extract(score_data, '$.score') + 0.0 > :user_score
-                """)
-                result = await db.execute(
-                    score_sql,
-                    {"game_id": game_id, "entry_id": entry_id, "user_score": user_score_val},
-                )
-                row = result.fetchone()
-                better_count = row[0] if row else 0
-                rank = better_count + 1
-        except (ValueError, TypeError, Exception):
-            pass
-
-    # Count total entries for this game
-    total_result = await db.execute(
-        select(func.count(LeaderboardEntry.id))
-        .where(LeaderboardEntry.game_id == game_id)
-    )
-    total = total_result.scalar() or 0
+    rank = 1
+    try:
+        user_score_val = json.loads(entry.score_data).get("score")
+        if user_score_val is not None:
+            result = await db.execute(
+                SCORE_RANK_SQL,
+                {"game_id": game_id, "entry_id": entry.id, "user_score": user_score_val},
+            )
+            row = result.fetchone()
+            rank = (row[0] if row else 0) + 1
+    except (ValueError, TypeError):
+        pass
 
     return {
         "success": True,
-        "rank": rank or 1,
-        "entry_id": entry_id,
+        "rank": rank,
+        "entry_id": entry.id,
     }
+
+
+async def _user_rank_for_score(
+    db: AsyncSession,
+    game_id: str,
+    entry: LeaderboardEntry,
+) -> int | None:
+    try:
+        user_score_val = json.loads(entry.score_data).get("score")
+        if user_score_val is None:
+            return None
+        result = await db.execute(
+            SCORE_RANK_SQL,
+            {"game_id": game_id, "entry_id": entry.id, "user_score": user_score_val},
+        )
+        row = result.fetchone()
+        return (row[0] if row else 0) + 1
+    except (ValueError, TypeError):
+        return None
 
 
 async def get_leaderboard(
@@ -115,32 +113,25 @@ async def get_leaderboard(
 ) -> dict:
     """Get leaderboard entries for a game."""
     if view == "latest":
-        # Latest entries — ordered by submission time
         result = await db.execute(
-            select(LeaderboardEntry)
+            select(LeaderboardEntry, User.username)
+            .join(User, User.id == LeaderboardEntry.user_id)
             .where(LeaderboardEntry.game_id == game_id)
             .order_by(desc(LeaderboardEntry.submitted_at))
             .limit(limit)
         )
-        entries = result.scalars().all()
-        total = len(entries)
-
-        # Fetch usernames
         rows = []
-        for rank, entry in enumerate(entries, 1):
-            user_result = await db.execute(select(User).where(User.id == entry.user_id))
-            user = user_result.scalar_one_or_none()
+        for rank, (entry, username) in enumerate(result.all(), 1):
             rows.append({
                 "rank": rank,
-                "username": user.username if user else "Unknown",
+                "username": username,
                 "score_data": json.loads(entry.score_data),
                 "submitted_at": entry.submitted_at,
             })
     else:
-        # Best entries — best score per user, sorted by score_data.score DESC
-        # Use raw SQL since SQLAlchemy doesn't handle subquery-based per-user grouping cleanly
+        # One row per user (enforced by unique constraint); order by score
         entries_sql = text("""
-            SELECT le.*, u.username
+            SELECT le.score_data, le.submitted_at, u.username
             FROM leaderboard_entries le
             JOIN users u ON u.id = le.user_id
             WHERE le.game_id = :game_id
@@ -148,20 +139,14 @@ async def get_leaderboard(
             LIMIT :limit
         """)
         result = await db.execute(entries_sql, {"game_id": game_id, "limit": limit})
-        raw = result.fetchall()
-
         rows = []
-        seen_users = set()
-        for rank, row in enumerate(raw, 1):
-            uid = row._mapping.get("user_id") or row[2]
-            if uid in seen_users:
-                continue
-            seen_users.add(uid)
+        for rank, row in enumerate(result.fetchall(), 1):
+            mapping = row._mapping
             rows.append({
                 "rank": rank,
-                "username": row._mapping.get("username", "Unknown"),
-                "score_data": json.loads(row._mapping.get("score_data", "{}") or row[3]),
-                "submitted_at": row._mapping.get("submitted_at", datetime.now(timezone.utc)),
+                "username": mapping.get("username", "Unknown"),
+                "score_data": json.loads(mapping.get("score_data", "{}")),
+                "submitted_at": mapping.get("submitted_at", datetime.now(timezone.utc)),
             })
 
     total_count_result = await db.execute(
@@ -170,44 +155,28 @@ async def get_leaderboard(
     )
     total = total_count_result.scalar() or 0
 
-    # Find user's entry if authenticated
     user_entry = None
     user_rank = None
     if user_id is not None:
         result = await db.execute(
-            select(LeaderboardEntry)
+            select(LeaderboardEntry, User.username)
+            .join(User, User.id == LeaderboardEntry.user_id)
             .where(
                 LeaderboardEntry.game_id == game_id,
                 LeaderboardEntry.user_id == user_id,
             )
-            .order_by(desc(LeaderboardEntry.submitted_at))
             .limit(1)
         )
-        ue = result.scalar_one_or_none()
-        if ue:
-            ur = await db.execute(select(User).where(User.id == user_id))
-            u = ur.scalar_one_or_none()
+        row = result.first()
+        if row:
+            ue, username = row
+            user_rank = await _user_rank_for_score(db, game_id, ue)
             user_entry = {
-                "rank": 0,
-                "username": u.username if u else "Unknown",
+                "rank": user_rank or 0,
+                "username": username,
                 "score_data": json.loads(ue.score_data),
                 "submitted_at": ue.submitted_at,
             }
-            # Calculate rank
-            try:
-                uv = json.loads(ue.score_data).get("score")
-                if uv is not None:
-                    better = await db.execute(
-                        select(func.count(LeaderboardEntry.user_id))
-                        .where(
-                            LeaderboardEntry.game_id == game_id,
-                            LeaderboardEntry.user_id != user_id,
-                        )
-                    )
-                    user_rank = (better.scalar() or 0) + 1
-                    user_entry["rank"] = user_rank
-            except (ValueError, TypeError):
-                pass
 
     return {
         "entries": rows,

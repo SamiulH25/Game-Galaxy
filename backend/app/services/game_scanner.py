@@ -1,24 +1,20 @@
+import asyncio
 import json
 from pathlib import Path
 
 # In-memory cache of game manifests keyed by game id
 games_cache: dict[str, dict] = {}
+games_list_sorted: list[dict] = []
 system_cache: list[dict] = []
 systems_star_config: dict[str, dict] = {}
+total_achievements_count: int = 0
+scan_generation: int = 0
 
 
-async def scan_games(games_dir: str):
-    """Scan /games/*/manifest.json and cache manifests."""
-    global games_cache, system_cache, systems_star_config
-
-    games_dir = Path(games_dir)
+def _scan_games_sync(games_dir: Path) -> tuple[dict[str, dict], list[dict], list[dict], dict[str, dict], int]:
     if not games_dir.exists():
-        games_cache.clear()
-        system_cache.clear()
-        systems_star_config.clear()
-        return
+        return {}, [], [], {}, 0
 
-    # Load systems star config
     systems_config_path = games_dir / "systems.json"
     if systems_config_path.exists():
         try:
@@ -40,10 +36,9 @@ async def scan_games(games_dir: str):
         except (json.JSONDecodeError, KeyError) as e:
             print(f"Warning: skipping {manifest_path}: {e}")
 
-    games_cache.clear()
-    games_cache.update({m["id"]: m for m in manifests})
+    games_cache_local = {m["id"]: m for m in manifests}
+    sorted_list = sorted(manifests, key=lambda g: g["title"])
 
-    # Build solar system index
     systems: dict[str, dict] = {}
     for m in manifests:
         sid = m.get("solarSystemId", "unknown")
@@ -56,5 +51,34 @@ async def scan_games(games_dir: str):
                 "star": star_props,
             }
         systems[sid]["game_count"] += 1
+
+    system_list = sorted(systems.values(), key=lambda s: s["name"])
+    ach_total = sum(len(g.get("achievements", [])) for g in games_cache_local.values())
+
+    return games_cache_local, sorted_list, system_list, systems_star_config, ach_total
+
+
+async def scan_games(games_dir: str):
+    """Scan /games/*/manifest.json and cache manifests."""
+    global games_cache, games_list_sorted, system_cache, systems_star_config
+    global total_achievements_count, scan_generation
+
+    games_path = Path(games_dir)
+    (
+        games_cache_local,
+        sorted_list,
+        system_list,
+        star_config,
+        ach_total,
+    ) = await asyncio.to_thread(_scan_games_sync, games_path)
+
+    games_cache.clear()
+    games_cache.update(games_cache_local)
+    games_list_sorted.clear()
+    games_list_sorted.extend(sorted_list)
     system_cache.clear()
-    system_cache.extend(sorted(systems.values(), key=lambda s: s["name"]))
+    system_cache.extend(system_list)
+    systems_star_config.clear()
+    systems_star_config.update(star_config)
+    total_achievements_count = ach_total
+    scan_generation += 1

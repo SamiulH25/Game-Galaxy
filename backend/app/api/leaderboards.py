@@ -11,6 +11,7 @@ from app.schemas.leaderboard import (
 )
 from app.services.leaderboard_service import submit_score, get_leaderboard
 from app.services.game_scanner import games_cache
+from app.validators import validate_score_data
 
 router = APIRouter(prefix="/api/leaderboards", tags=["leaderboards"])
 
@@ -28,14 +29,15 @@ async def submit_leaderboard_score(
     if game_id not in games_cache:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Game not found")
 
+    validate_score_data(body.score_data)
     return await submit_score(db, current_user.id, game_id, body.score_data)
 
 
 @router.get("/{game_id}", response_model=LeaderboardResponse)
 async def fetch_leaderboard(
     game_id: str,
-    view: str = Query("best", regex="^(best|latest)$"),
-    limit: int = Query(50, ge=1, le=1000),
+    view: str = Query("best", pattern="^(best|latest)$"),
+    limit: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_optional),
 ):

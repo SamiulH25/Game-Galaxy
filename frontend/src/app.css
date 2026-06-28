@@ -62,6 +62,12 @@
   --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+html.season-nebula {
+  --cyan: #6a8cff;
+  --cyan-glow: rgba(106, 140, 255, 0.14);
+  --accent-glow: rgba(106, 140, 255, 0.1);
+}
+
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
@@ -93,6 +99,25 @@ button:active, .btn:active, .auth-btn:active, .gf-btn:active, .ctrl-btn:active, 
   *, *::before, *::after { animation-duration: 0.1s !important; animation-iteration-count: 1 !important; transition-duration: 0.05s !important; }
 }
 
+html.reduce-motion {
+  --duration-tactile: 0.05s;
+  --duration-press: 0.05s;
+  --duration-entrance: 0.1s;
+  --duration-modal: 0.1s;
+  --duration-leave: 0.05s;
+  --ease-out: ease-out;
+  --ease-bounce: ease-out;
+}
+
+html.reduce-motion *,
+html.reduce-motion *::before,
+html.reduce-motion *::after {
+  animation-duration: 0.1s !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.05s !important;
+  scroll-behavior: auto !important;
+}
+
 @media (pointer: coarse) {
   .auth-btn, .gf-btn, .btn { min-height: 44px; }
   .selector-trigger { padding: 8px 18px; min-height: 44px; font-size: var(--fs-sm); }
@@ -101,4 +126,19 @@ button:active, .btn:active, .auth-btn:active, .gf-btn:active, .ctrl-btn:active, 
   .btn { min-height: 48px; }
   .auth-submit { min-height: 44px; }
   .auth-field input { min-height: 44px; }
+}
+
+html.high-contrast {
+  --text: #ffffff;
+  --text-secondary: #d0d0e8;
+  --text-muted: #a8a8c8;
+  --border: rgba(255, 255, 255, 0.22);
+  --border-hover: rgba(255, 255, 255, 0.38);
+  --border-accent: rgba(255, 200, 80, 0.55);
+  --bg-deepest: #000000;
+  --surface: #0a0a18;
+}
+
+html, body {
+  overscroll-behavior-y: none;
 }

@@ -1,6 +1,8 @@
 import { writable, derived } from 'svelte/store';
 import { setApiToken } from '$lib/api';
 import { fetchMe, login as apiLogin, register as apiRegister } from '$lib/api';
+import { flushPendingGuestOnLogin } from '$lib/stores/progression';
+import { showToast } from '$lib/stores/toast';
 
 function getStoredToken(): string | null {
   if (typeof localStorage === 'undefined') return null;
@@ -25,6 +27,8 @@ export async function loginUser(username: string, password: string) {
   token.set(data.access_token);
   const me = await fetchMe();
   user.set(me);
+  const syncMsg = await flushPendingGuestOnLogin();
+  if (syncMsg) showToast(syncMsg, 'success', 4000);
   return me;
 }
 

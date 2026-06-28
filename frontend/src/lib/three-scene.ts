@@ -115,6 +115,23 @@ function createPlanetTexture(baseColor: THREE.Color, seed: number): THREE.Canvas
   return texture;
 }
 
+const planetTextureCache = new Map<string, THREE.CanvasTexture>();
+
+function getPlanetTexture(baseColor: THREE.Color, seed: number): THREE.CanvasTexture {
+  const key = `${baseColor.getHexString()}-${seed}`;
+  let tex = planetTextureCache.get(key);
+  if (!tex) {
+    tex = createPlanetTexture(baseColor, seed);
+    planetTextureCache.set(key, tex);
+  }
+  return tex;
+}
+
+const IS_MOBILE_GALAXY =
+  typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches;
+const PLANET_SEGMENTS = IS_MOBILE_GALAXY ? 24 : 32;
+const SUN_SEGMENTS = IS_MOBILE_GALAXY ? 32 : 48;
+
 function rgbToHsl(r: number, g: number, b: number) {
   const max = Math.max(r, g, b), min = Math.min(r, g, b);
   let h = 0, sat = 0, lit = (max + min) / 2;
@@ -183,8 +200,33 @@ function createLabelTexture(text: string) {
   return tex;
 }
 
+function createMysteryLabelTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d')!;
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = '700 64px DM Sans, system-ui, sans-serif';
+  ctx.shadowColor = 'rgba(0,0,0,0.9)';
+  ctx.shadowBlur = 24;
+  ctx.fillStyle = 'rgba(120,120,150,0.55)';
+  ctx.fillText('?', 256, 64);
+
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = 'rgba(5,5,20,0.7)';
+  ctx.lineWidth = 5;
+  ctx.strokeText('?', 256, 64);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.needsUpdate = true;
+  return tex;
+}
+
 export interface SceneCallbacks {
   onPlanetClick: (game: any) => void;
+  onPlanetDoubleClick?: (game: any) => void;
 }
 
 export class GalaxyScene {
@@ -214,17 +256,54 @@ export class GalaxyScene {
   private raycaster = new THREE.Raycaster();
   private pointer = new THREE.Vector2();
   private hoveredMesh: THREE.Mesh | null = null;
+  private interactionsEnabled = true;
+  private discoveredIds = new Set<string>();
+  private revealQueue: { planet: any; progress: number }[] = [];
+  private mysteryLabelTexture = createMysteryLabelTexture();
   private cameraAngle = 0;
+  private cameraTargetAngle: number | null = null;
   private time = 0;
   private resizeRaf: number | null = null;
   private callbacks: SceneCallbacks;
   private starDotTexture: THREE.Texture;
   private glowTexture: THREE.Texture;
   private running = false;
+  private renderingPaused = false;
   private currentStarColor = new THREE.Color(0xffcc44);
   private cameraDistance = 26;
   private cameraTargetDistance = 26;
+  private readonly defaultCameraDistance = 26;
+  private readonly focusCameraDistance = 17;
   private cameraSpeed = 0.0006;
+  private focusAnim: { planet: any; progress: number; ring: THREE.Mesh } | null = null;
+  private reduceMotion = false;
+  private highlightUndiscoveredOnly = false;
+  private pointers = new Map<number, { x: number; y: number }>();
+  private lastPinchDist: number | null = null;
+  private activePointerId: number | null = null;
+  private gestureMode: 'none' | 'tap' | 'orbit' = 'none';
+  private gesturePlanet: any | null = null;
+  private dragMoved = false;
+  private dragStartX = 0;
+  private dragStartY = 0;
+  private lastDragX = 0;
+  private userOrbiting = false;
+  private suppressClick = false;
+  private doubleTapLaunch = false;
+  private lastTapTime = 0;
+  private lastTapGameId: string | null = null;
+  private readonly orbitDragThreshold = 10;
+  private readonly tapCancelThresholdTouch = 28;
+  private readonly tapCancelThresholdMouse = 12;
+  private readonly pickWorldPos = new THREE.Vector3();
+  private readonly pickLabelPos = new THREE.Vector3();
+  private readonly pickProjected = new THREE.Vector3();
+  private pickRafId = 0;
+  private pickPending: { clientX: number; clientY: number } | null = null;
+  private readonly interpColor = new THREE.Color();
+  private readonly interpGlow = new THREE.Color();
+  private readonly interpEmissive = new THREE.Color();
+  private readonly interpAmbient = new THREE.Color();
   private transition: {
     progress: number;
     oldPlanets: { mesh: THREE.Mesh; label: THREE.Sprite | null }[];
@@ -271,9 +350,8 @@ export class GalaxyScene {
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 0.75; // deeper, richer shadows
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    // Enable shadow maps
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // Shadows disabled — stylized scene, saves GPU on every frame
+    this.renderer.shadowMap.enabled = false;
     this.container.appendChild(this.renderer.domElement);
 
     // Lights — dramatic contrast
@@ -286,10 +364,6 @@ export class GalaxyScene {
     // Main sun light — brighter, casts shadows
     this.sunLight = new THREE.PointLight(0xffcc66, 10.0, 150, 1.2);
     this.sunLight.position.set(0, 0, 0);
-    this.sunLight.castShadow = true;
-    this.sunLight.shadow.mapSize.width = 2048;
-    this.sunLight.shadow.mapSize.height = 2048;
-    this.sunLight.shadow.bias = -0.001;
     this.scene.add(this.sunLight);
 
     // Fill light from below — cooler, dimmer for drama
@@ -315,9 +389,9 @@ export class GalaxyScene {
     this.sunGroup = new THREE.Group();
     this.scene.add(this.sunGroup);
 
-    const sunGeo = new THREE.SphereGeometry(2.0, 64, 64);
+    const sunGeo = new THREE.SphereGeometry(2.0, SUN_SEGMENTS, SUN_SEGMENTS);
     this.sunMaterial = new THREE.MeshStandardMaterial({
-      map: createPlanetTexture(new THREE.Color(0xffaa44), 9999),
+      map: getPlanetTexture(new THREE.Color(0xffaa44), 9999),
       color: 0xffcc66, emissive: 0xff8800, emissiveIntensity: 4.0,
       roughness: 0.05, metalness: 0,
     });
@@ -341,9 +415,13 @@ export class GalaxyScene {
     this.outerGlow.scale.set(22, 22, 1);
     this.sunGroup.add(this.outerGlow);
 
-    // Click/hover
+    // Click/hover — pointer events for mouse + touch
+    this.renderer.domElement.addEventListener('pointerdown', this.onPointerDown);
+    this.renderer.domElement.addEventListener('pointermove', this.onPointerMove);
+    this.renderer.domElement.addEventListener('pointerup', this.onPointerUp);
+    this.renderer.domElement.addEventListener('pointercancel', this.onPointerUp);
     this.renderer.domElement.addEventListener('click', this.onClick);
-    this.renderer.domElement.addEventListener('mousemove', this.onMouseMove);
+    this.renderer.domElement.addEventListener('wheel', this.onWheel, { passive: false });
 
     // Resize
     window.addEventListener('resize', this.scheduleResize);
@@ -560,9 +638,281 @@ export class GalaxyScene {
     this.ambientLight.color.copy(new THREE.Color(starProps.ambientColor || '#222244'));
   }
 
+  setInteractionsEnabled(enabled: boolean) {
+    this.interactionsEnabled = enabled;
+    this.renderer.domElement.style.pointerEvents = enabled ? 'auto' : 'none';
+    this.renderer.domElement.style.cursor = 'default';
+
+    if (!enabled && this.hoveredMesh) {
+      const mat = this.hoveredMesh.material as THREE.MeshStandardMaterial;
+      const planet = this.planets.find((p: any) => p.mesh === this.hoveredMesh);
+      mat.emissiveIntensity = planet?.discovered === false ? 0.02 : 0.06;
+      this.hoveredMesh.scale.set(1, 1, 1);
+      this.hoveredMesh = null;
+    }
+  }
+
+  /** Stop RAF loop and GPU draws (e.g. while a game iframe is fullscreen). */
+  pauseRendering() {
+    if (this.renderingPaused) return;
+    this.renderingPaused = true;
+    this.setInteractionsEnabled(false);
+    this.renderer.domElement.style.visibility = 'hidden';
+    if (this.animId) {
+      cancelAnimationFrame(this.animId);
+      this.animId = 0;
+    }
+  }
+
+  /** Resume galaxy animation after pauseRendering(). */
+  resumeRendering() {
+    if (!this.renderingPaused || !this.running) return;
+    this.renderingPaused = false;
+    this.renderer.domElement.style.visibility = 'visible';
+    this.setInteractionsEnabled(true);
+    if (!this.animId) this.animate();
+  }
+
+  setHighlightUndiscoveredOnly(enabled: boolean) {
+    this.highlightUndiscoveredOnly = enabled;
+    for (const p of this.planets) {
+      this.applyUndiscoveredHighlight(p);
+    }
+  }
+
+  recenterCamera() {
+    this.cameraTargetAngle = null;
+    this.cameraTargetDistance = this.defaultCameraDistance;
+    this.clearFocusAnim();
+  }
+
+  private applyUndiscoveredHighlight(planet: any) {
+    const mesh = planet.mesh as THREE.Mesh;
+    const mat = mesh.material as THREE.MeshStandardMaterial;
+    if (!this.highlightUndiscoveredOnly) {
+      mat.emissiveIntensity = planet.discovered === false ? 0.02 : 0.06;
+      mat.opacity = planet.discovered === false && mat.transparent ? 0.42 : 1;
+      return;
+    }
+    if (!planet.discovered) {
+      mat.emissiveIntensity = 0.55;
+      mat.opacity = 0.85;
+    } else {
+      mat.emissiveIntensity = 0.02;
+      mat.opacity = 0.28;
+      mat.transparent = true;
+    }
+  }
+
+  private clampCameraDistance(d: number) {
+    return Math.max(12, Math.min(42, d));
+  }
+
+  private onWheel = (e: WheelEvent) => {
+    if (!this.interactionsEnabled) return;
+    e.preventDefault();
+    const factor = e.deltaY > 0 ? 1.06 : 0.94;
+    this.cameraTargetDistance = this.clampCameraDistance(this.cameraTargetDistance * factor);
+  };
+
+  setDiscoveredGameIds(ids: string[], skipGameId: string | null = null) {
+    this.discoveredIds = new Set(ids);
+    const animatingIds = new Set(this.revealQueue.map((r) => r.planet.game.id as string));
+    for (const p of this.planets) {
+      const gid = p.game.id as string;
+      if (gid === skipGameId || animatingIds.has(gid)) continue;
+      const shouldBe = this.discoveredIds.has(gid);
+      if (p.discovered !== shouldBe) {
+        p.discovered = shouldBe;
+        this.applyPlanetDiscoveryVisual(p, shouldBe, false);
+      }
+    }
+  }
+
+  revealPlanet(gameId: string) {
+    const planet = this.planets.find((p: any) => p.game.id === gameId);
+    if (!planet) return;
+    if (planet.discovered) return;
+    if (this.revealQueue.some((r) => r.planet === planet)) return;
+    planet.discovered = false;
+    this.applyPlanetDiscoveryVisual(planet, false, false);
+    this.revealQueue.push({ planet, progress: 0 });
+  }
+
+  /** Pan camera toward a planet and pulse it — used by search, journal, and share links. */
+  focusPlanet(gameId: string): boolean {
+    const planet = this.planets.find((p: any) => p.game.id === gameId);
+    if (!planet) return false;
+
+    this.cameraTargetAngle = planet.angle + Math.PI / 2;
+    this.cameraTargetDistance = this.focusCameraDistance;
+    this.clearFocusAnim();
+
+    const size = planet.game.planetSize || 0.8;
+    const color = new THREE.Color(planet.game.planetColor || '#4488ff');
+    const ringGeo = new THREE.RingGeometry(size * 1.55, size * 1.82, 48);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0.9,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = -Math.PI / 2;
+    planet.mesh.add(ring);
+    this.focusAnim = { planet, progress: 0, ring };
+    return true;
+  }
+
+  private clearFocusAnim() {
+    if (!this.focusAnim) return;
+    const { ring, planet } = this.focusAnim;
+    planet.mesh.remove(ring);
+    ring.geometry.dispose();
+    (ring.material as THREE.Material).dispose();
+    const mesh = planet.mesh as THREE.Mesh;
+    mesh.scale.setScalar(mesh === this.hoveredMesh ? 1.15 : 1);
+    const mat = mesh.material as THREE.MeshStandardMaterial;
+    mat.emissiveIntensity = planet.discovered === false ? 0.02 : 0.06;
+    this.focusAnim = null;
+    this.cameraTargetDistance = this.defaultCameraDistance;
+  }
+
+  private lerpAngle(current: number, target: number, t: number): number {
+    let diff = target - current;
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
+    if (Math.abs(diff) < 0.003) return target;
+    return current + diff * t;
+  }
+
+  private tickFocusAnimation() {
+    if (!this.focusAnim) return;
+    const anim = this.focusAnim;
+    anim.progress += this.reduceMotion ? 1.2 : 0.02;
+    const t = anim.progress;
+    const planet = anim.planet;
+    const mesh = planet.mesh as THREE.Mesh;
+    const mat = mesh.material as THREE.MeshStandardMaterial;
+    const baseScale = mesh === this.hoveredMesh ? 1.15 : 1;
+    const pulse = 1 + Math.sin(t * Math.PI * 3.5) * 0.1;
+    mesh.scale.setScalar(baseScale * pulse);
+    mat.emissiveIntensity = (planet.discovered === false ? 0.02 : 0.06) + Math.sin(t * Math.PI * 2.5) * 0.4;
+
+    anim.ring.rotation.z += 0.025;
+    (anim.ring.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 0.9 - t * 0.28);
+
+    if (t >= 3.2) this.clearFocusAnim();
+  }
+
+  private cameraLerpFactor(): number {
+    return this.reduceMotion ? 0.18 : 0.06;
+  }
+
+  private applyPlanetDiscoveryVisual(planet: any, discovered: boolean, animating: boolean) {
+    const mesh = planet.mesh as THREE.Mesh;
+    const mat = mesh.material as THREE.MeshStandardMaterial;
+    const labelMat = planet.label?.material as THREE.SpriteMaterial | undefined;
+
+    if (discovered && !animating) {
+      mat.transparent = false;
+      mat.opacity = 1;
+      mat.emissiveIntensity = 0.06;
+      if (labelMat) {
+        const oldMap = labelMat.map;
+        labelMat.map = createLabelTexture(planet.baseLabelText || planet.game.title);
+        if (oldMap && oldMap !== labelMat.map) oldMap.dispose();
+        labelMat.opacity = 1;
+      }
+    mesh.children.forEach((child) => {
+      if (child instanceof THREE.Sprite) {
+        const sm = child.material as THREE.SpriteMaterial;
+        const size = planet.game.planetSize || 0.8;
+        const isOuter = child.scale.x > size * 5.5;
+        if (discovered && !animating) {
+          sm.opacity = isOuter ? 0.08 : 0.22;
+        } else {
+          sm.opacity = isOuter ? 0.035 : 0.1;
+        }
+      }
+    });
+      if (planet.mysteryVeil) planet.mysteryVeil.visible = false;
+      return;
+    }
+
+    mat.transparent = true;
+    mat.opacity = 0.42;
+    mat.emissiveIntensity = 0.02;
+    if (labelMat) {
+      const oldMap = labelMat.map;
+      labelMat.map = this.mysteryLabelTexture;
+      if (oldMap && oldMap !== this.mysteryLabelTexture && oldMap !== labelMat.map) oldMap.dispose();
+      labelMat.opacity = 0.65;
+    }
+    mesh.children.forEach((child) => {
+      if (child instanceof THREE.Sprite) {
+        const sm = child.material as THREE.SpriteMaterial;
+        const size = planet.game.planetSize || 0.8;
+        const isOuter = child.scale.x > size * 5.5;
+        sm.opacity = isOuter ? 0.035 : 0.1;
+      }
+    });
+
+    if (!planet.mysteryVeil) {
+      const veilGeo = new THREE.SphereGeometry((planet.game.planetSize || 0.8) * 1.18, 32, 32);
+      const veilMat = new THREE.MeshBasicMaterial({
+        color: 0x8899bb,
+        transparent: true,
+        opacity: 0.12,
+        wireframe: true,
+        depthWrite: false,
+      });
+      const veil = new THREE.Mesh(veilGeo, veilMat);
+      veil.raycast = () => {};
+      mesh.add(veil);
+      planet.mysteryVeil = veil;
+    } else {
+      planet.mysteryVeil.visible = true;
+    }
+  }
+
+  private tickRevealAnimations() {
+    if (this.revealQueue.length === 0) return;
+
+    const remaining: { planet: any; progress: number }[] = [];
+    for (const anim of this.revealQueue) {
+      anim.progress += this.reduceMotion ? 1 : 0.028;
+      const t = Math.min(anim.progress, 1);
+      const planet = anim.planet;
+      const mesh = planet.mesh as THREE.Mesh;
+      const mat = mesh.material as THREE.MeshStandardMaterial;
+      const pulse = 1 + Math.sin(t * Math.PI) * 0.22;
+
+      mat.opacity = 0.42 + t * 0.58;
+      mat.emissiveIntensity = 0.02 + t * 0.04;
+      mesh.scale.setScalar(pulse);
+
+      if (t >= 0.45 && !planet.discovered) {
+        planet.discovered = true;
+        this.discoveredIds.add(planet.game.id);
+        this.applyPlanetDiscoveryVisual(planet, true, true);
+      }
+
+      if (t < 1) {
+        remaining.push(anim);
+      } else {
+        mesh.scale.setScalar(1);
+        mat.transparent = false;
+        mat.opacity = 1;
+        mat.emissiveIntensity = 0.06;
+      }
+    }
+    this.revealQueue = remaining;
+  }
+
   /** Apply user settings to the scene reactively */
   applySettings(s: Record<string, any>) {
-    // Camera speed
     if (typeof s.cameraRotSpeed === 'number') {
       this.cameraSpeed = s.cameraRotSpeed * 0.0006;
     }
@@ -597,6 +947,14 @@ export class GalaxyScene {
     // Orbit rings visibility
     if (typeof s.orbitRings === 'boolean') {
       for (const r of this.rings) r.visible = s.orbitRings;
+    }
+
+    if (typeof s.reduceMotion === 'boolean') {
+      this.reduceMotion = s.reduceMotion;
+    }
+
+    if (typeof s.doubleTapLaunch === 'boolean') {
+      this.doubleTapLaunch = s.doubleTapLaunch;
     }
 
     // Planet glow visibility — toggles inner/outer glow on each planet
@@ -676,16 +1034,18 @@ export class GalaxyScene {
       this.rings.push(ring);
 
       // Planet mesh — receives shadows
-      const geo = new THREE.SphereGeometry(size, 64, 64);
+      const geo = new THREE.SphereGeometry(size, PLANET_SEGMENTS, PLANET_SEGMENTS);
       const mat = new THREE.MeshStandardMaterial({
-        map: createPlanetTexture(color, index * 1337 + 42),
+        map: getPlanetTexture(color, index * 1337 + 42),
         roughness: 0.6, metalness: 0.2,
         emissive: color, emissiveIntensity: 0.06,
       });
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(radius, 0, 0);
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
+      mesh.userData.gameId = game.id;
+      mesh.traverse((child) => {
+        if (child !== mesh) child.raycast = () => {};
+      });
       this.scene.add(mesh);
       this.planetMeshes.push(mesh);
 
@@ -747,11 +1107,21 @@ export class GalaxyScene {
       }));
       label.position.set(radius, -size - 1.6, 0);
       label.scale.set(5.0, 0.625, 1);
+      label.userData.gameId = game.id;
       this.scene.add(label);
       this.characteristicObjects.push(label);
 
-      this.planets.push({ mesh, game, angle: (index / filtered.length) * Math.PI * 2, radius, speed, label });
+      this.planets.push({
+        mesh, game, angle: (index / filtered.length) * Math.PI * 2, radius, speed, label,
+        baseLabelText: game.planetName || game.title,
+        discovered: this.discoveredIds.has(game.id),
+        mysteryVeil: null,
+      });
     });
+
+    for (const p of this.planets) {
+      this.applyPlanetDiscoveryVisual(p, p.discovered, false);
+    }
 
     // === START SMOOTH TRANSITION ===
     if (hadOldContent) {
@@ -944,44 +1314,326 @@ export class GalaxyScene {
     return group;
   }
 
-  private onClick = (event: MouseEvent) => {
+  private updatePointerFromClient(clientX: number, clientY: number) {
     const rect = this.renderer.domElement.getBoundingClientRect();
-    this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    this.raycaster.setFromCamera(this.pointer, this.camera);
-    const intersects = this.raycaster.intersectObjects(this.planetMeshes);
-    if (intersects.length > 0) {
-      const hit = intersects[0].object;
-      const planet = this.planets.find((p: any) => p.mesh === hit);
-      if (planet) this.callbacks.onPlanetClick(planet.game);
+    this.pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    this.pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+  }
+
+  private worldRadiusToPixels(worldRadius: number, worldPos: THREE.Vector3): number {
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    const distance = this.camera.position.distanceTo(worldPos);
+    if (distance < 0.001) return 48;
+    const vFov = (this.camera.fov * Math.PI) / 180;
+    const visibleHeight = 2 * Math.tan(vFov / 2) * distance;
+    return (worldRadius / visibleHeight) * rect.height;
+  }
+
+  private projectToScreen(
+    worldPos: THREE.Vector3,
+    rect: DOMRect,
+    out: THREE.Vector3
+  ): { x: number; y: number; depth: number } | null {
+    out.copy(worldPos).project(this.camera);
+    if (out.z > 1) return null;
+    return {
+      x: (out.x * 0.5 + 0.5) * rect.width,
+      y: (-out.y * 0.5 + 0.5) * rect.height,
+      depth: out.z,
+    };
+  }
+
+  /** Screen-space pick — hit radius scales with projected planet size (stable at any zoom). */
+  private pickPlanetAt(clientX: number, clientY: number): any | null {
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    const sx = clientX - rect.left;
+    const sy = clientY - rect.top;
+
+    type Candidate = { planet: any; dist: number; depth: number };
+    const candidates: Candidate[] = [];
+
+    for (const p of this.planets) {
+      const mesh = p.mesh as THREE.Mesh;
+      mesh.getWorldPosition(this.pickWorldPos);
+      const screen = this.projectToScreen(this.pickWorldPos, rect, this.pickProjected);
+      if (!screen) continue;
+
+      const size = p.game.planetSize || 0.8;
+      const pickR = Math.max(
+        24,
+        Math.min(56, this.worldRadiusToPixels(size * 1.15, this.pickWorldPos) + 16)
+      );
+
+      const dist = Math.hypot(sx - screen.x, sy - screen.y);
+      if (dist <= pickR) {
+        candidates.push({ planet: p, dist, depth: screen.depth });
+      }
+
+      if (p.label) {
+        p.label.getWorldPosition(this.pickLabelPos);
+        const lscreen = this.projectToScreen(this.pickLabelPos, rect, this.pickProjected);
+        if (lscreen) {
+          const ldist = Math.hypot(sx - lscreen.x, sy - lscreen.y);
+          const labelR = Math.max(pickR * 0.85, 26);
+          if (ldist <= labelR) {
+            candidates.push({ planet: p, dist: ldist, depth: lscreen.depth });
+          }
+        }
+      }
     }
-  };
 
-  private onMouseMove = (event: MouseEvent) => {
-    const rect = this.renderer.domElement.getBoundingClientRect();
-    this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    if (candidates.length === 0) return null;
+
+    const bestByPlanet = new Map<any, Candidate>();
+    for (const c of candidates) {
+      const prev = bestByPlanet.get(c.planet);
+      if (!prev || c.dist < prev.dist) bestByPlanet.set(c.planet, c);
+    }
+    const ranked = [...bestByPlanet.values()].sort((a, b) => {
+      if (Math.abs(a.depth - b.depth) > 0.002) return a.depth - b.depth;
+      return a.dist - b.dist;
+    });
+
+    // Confirm pick along the cursor ray (handles planets overlapping in depth)
+    this.updatePointerFromClient(clientX, clientY);
     this.raycaster.setFromCamera(this.pointer, this.camera);
-    const intersects = this.raycaster.intersectObjects(this.planetMeshes);
+    const meshHits = this.raycaster.intersectObjects(this.planetMeshes, false);
+    if (meshHits.length > 0) {
+      const hitPlanet = this.planets.find((pl) => pl.mesh === meshHits[0].object);
+      if (hitPlanet) {
+        const mesh = hitPlanet.mesh as THREE.Mesh;
+        mesh.getWorldPosition(this.pickWorldPos);
+        const screen = this.projectToScreen(this.pickWorldPos, rect, this.pickProjected);
+        if (screen) {
+          const size = hitPlanet.game.planetSize || 0.8;
+          const pickR = Math.max(
+            24,
+            Math.min(56, this.worldRadiusToPixels(size * 1.15, this.pickWorldPos) + 16)
+          );
+          if (Math.hypot(sx - screen.x, sy - screen.y) <= pickR * 1.15) {
+            return hitPlanet;
+          }
+        }
+      }
+      return null;
+    }
 
+    return ranked[0]?.planet ?? null;
+  }
+
+  private applyPlanetIdleVisual(planet: any) {
+    const mesh = planet.mesh as THREE.Mesh;
+    const mat = mesh.material as THREE.MeshStandardMaterial;
+    mesh.scale.set(1, 1, 1);
+    if (this.highlightUndiscoveredOnly) {
+      this.applyUndiscoveredHighlight(planet);
+      return;
+    }
+    mat.emissiveIntensity = planet.discovered === false ? 0.02 : 0.06;
+    if (planet.discovered === false && mat.transparent) {
+      mat.opacity = 0.42;
+    } else if (planet.discovered) {
+      mat.opacity = 1;
+    }
+  }
+
+  private setHoveredPlanet(planet: any | null) {
     if (this.hoveredMesh) {
-      (this.hoveredMesh.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.06;
-      this.hoveredMesh.scale.set(1, 1, 1);
+      const prev = this.planets.find((p: any) => p.mesh === this.hoveredMesh);
+      if (prev) this.applyPlanetIdleVisual(prev);
       this.hoveredMesh = null;
     }
-    this.renderer.domElement.style.cursor = intersects.length > 0 ? 'pointer' : 'default';
-    if (intersects.length > 0) {
-      const m = intersects[0].object as THREE.Mesh;
-      (m.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.8;
-      m.scale.set(1.15, 1.15, 1.15);
-      this.hoveredMesh = m;
+    this.renderer.domElement.style.cursor = planet ? 'pointer' : 'default';
+    if (!planet) return;
+    const mesh = planet.mesh as THREE.Mesh;
+    const mat = mesh.material as THREE.MeshStandardMaterial;
+    mat.emissiveIntensity = planet.discovered === false ? 0.58 : 0.88;
+    mesh.scale.set(1.15, 1.15, 1.15);
+    this.hoveredMesh = mesh;
+  }
+
+  private firePlanetAction(planet: any) {
+    const game = planet?.game;
+    if (!game) return;
+    const now = Date.now();
+    const gameId = game.id ?? null;
+
+    if (
+      this.doubleTapLaunch &&
+      gameId &&
+      this.lastTapGameId === gameId &&
+      now - this.lastTapTime < 350 &&
+      this.callbacks.onPlanetDoubleClick
+    ) {
+      this.callbacks.onPlanetDoubleClick(game);
+      this.lastTapTime = 0;
+      this.lastTapGameId = null;
+    } else {
+      this.callbacks.onPlanetClick(game);
+      this.lastTapTime = now;
+      this.lastTapGameId = gameId;
     }
+  }
+
+  private resetGesture() {
+    this.activePointerId = null;
+    this.dragMoved = false;
+    this.gestureMode = 'none';
+    this.gesturePlanet = null;
+    this.userOrbiting = false;
+  }
+
+  private onClick = (event: MouseEvent) => {
+    if (!this.interactionsEnabled || this.suppressClick) {
+      this.suppressClick = false;
+      return;
+    }
+    const planet = this.pickPlanetAt(event.clientX, event.clientY);
+    if (planet) this.firePlanetAction(planet);
+  };
+
+  private onPointerDown = (event: PointerEvent) => {
+    this.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (!this.interactionsEnabled || event.button !== 0) return;
+
+    if (this.pointers.size > 1) {
+      this.resetGesture();
+      return;
+    }
+
+    this.activePointerId = event.pointerId;
+    this.dragMoved = false;
+    this.dragStartX = event.clientX;
+    this.dragStartY = event.clientY;
+    this.lastDragX = event.clientX;
+    this.suppressClick = false;
+
+    const planet = this.pickPlanetAt(event.clientX, event.clientY);
+    if (planet) {
+      this.gestureMode = 'tap';
+      this.gesturePlanet = planet;
+      this.userOrbiting = false;
+    } else {
+      this.gestureMode = 'orbit';
+      this.gesturePlanet = null;
+      this.userOrbiting = true;
+    }
+
+    try {
+      this.renderer.domElement.setPointerCapture(event.pointerId);
+    } catch { /* ignore */ }
+  };
+
+  private onPointerUp = (event: PointerEvent) => {
+    this.pointers.delete(event.pointerId);
+    if (this.pointers.size < 2) this.lastPinchDist = null;
+
+    const wasActive = this.activePointerId === event.pointerId;
+    if (wasActive) {
+      try {
+        this.renderer.domElement.releasePointerCapture(event.pointerId);
+      } catch { /* ignore */ }
+    }
+
+    if (this.pointers.size === 0) {
+      this.userOrbiting = false;
+    }
+
+    if (!this.interactionsEnabled || !wasActive) return;
+
+    if (event.pointerType === 'mouse') {
+      if (this.gestureMode === 'orbit' && this.dragMoved) {
+        this.suppressClick = true;
+      }
+      this.resetGesture();
+      return;
+    }
+
+    const releasePlanet = this.pickPlanetAt(event.clientX, event.clientY);
+    if (this.gestureMode === 'tap' && this.gesturePlanet) {
+      this.firePlanetAction(releasePlanet ?? this.gesturePlanet);
+    } else if (this.gestureMode === 'orbit' && !this.dragMoved && releasePlanet) {
+      this.firePlanetAction(releasePlanet);
+    }
+
+    this.resetGesture();
+  };
+
+  private onPointerMove = (event: PointerEvent) => {
+    if (!this.interactionsEnabled) return;
+
+    if (this.pointers.has(event.pointerId)) {
+      this.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    }
+
+    if (this.pointers.size >= 2) {
+      const pts = [...this.pointers.values()];
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      if (this.lastPinchDist !== null) {
+        const scale = dist / this.lastPinchDist;
+        this.cameraTargetDistance = this.clampCameraDistance(this.cameraTargetDistance / scale);
+      }
+      this.lastPinchDist = dist;
+      if (this.gestureMode === 'tap') {
+        this.gestureMode = 'none';
+        this.gesturePlanet = null;
+      }
+      return;
+    }
+
+    if (this.activePointerId === event.pointerId && this.pointers.size === 1) {
+      const dxTotal = event.clientX - this.dragStartX;
+      const dyTotal = event.clientY - this.dragStartY;
+      const travel = Math.hypot(dxTotal, dyTotal);
+
+      if (this.gestureMode === 'tap') {
+        const cancelThreshold =
+          event.pointerType === 'touch' ? this.tapCancelThresholdTouch : this.tapCancelThresholdMouse;
+        if (travel > cancelThreshold) {
+          this.gestureMode = 'none';
+          this.gesturePlanet = null;
+        }
+      } else if (this.gestureMode === 'orbit') {
+        if (!this.dragMoved && travel > this.orbitDragThreshold) {
+          this.dragMoved = true;
+        }
+        if (this.dragMoved) {
+          const dx = event.clientX - this.lastDragX;
+          this.lastDragX = event.clientX;
+          this.cameraTargetAngle = null;
+          this.cameraAngle -= dx * 0.005;
+        }
+      }
+    }
+
+    if (event.pointerType !== 'mouse') return;
+    this.pickPending = { clientX: event.clientX, clientY: event.clientY };
+    if (this.pickRafId) return;
+    this.pickRafId = requestAnimationFrame(() => {
+      this.pickRafId = 0;
+      const pending = this.pickPending;
+      this.pickPending = null;
+      if (!pending) return;
+      const hovered = this.pickPlanetAt(pending.clientX, pending.clientY);
+      const mesh = hovered?.mesh ?? null;
+      if (mesh === this.hoveredMesh) return;
+      this.setHoveredPlanet(hovered);
+    });
   };
 
   private animate = () => {
-    if (!this.running) return;
+    if (!this.running || this.renderingPaused) {
+      this.animId = 0;
+      return;
+    }
+    if (typeof document !== 'undefined' && document.hidden) {
+      this.animId = requestAnimationFrame(this.animate);
+      return;
+    }
     this.animId = requestAnimationFrame(this.animate);
     this.time += 0.004;
+    this.tickRevealAnimations();
+    this.tickFocusAnimation();
 
     for (const p of this.planets) {
       if (p.mesh === this.hoveredMesh) {
@@ -1028,17 +1680,17 @@ export class GalaxyScene {
 
       // Phase 2 — star color morphs (0.2→0.6)
       const starT = this.easeInOutCubic(Math.min(Math.max((t - 0.2) / 0.4, 0), 1));
-      const interpColor = tr.startStarColor.clone().lerp(tr.endStarColor, starT);
-      const interpGlow = tr.startGlowColor.clone().lerp(tr.endGlowColor, starT);
-      const interpEmissive = tr.startEmissive.clone().lerp(tr.endEmissive, starT);
-      const interpAmbient = tr.startAmbient.clone().lerp(tr.endAmbient, starT);
+      this.interpColor.copy(tr.startStarColor).lerp(tr.endStarColor, starT);
+      this.interpGlow.copy(tr.startGlowColor).lerp(tr.endGlowColor, starT);
+      this.interpEmissive.copy(tr.startEmissive).lerp(tr.endEmissive, starT);
+      this.interpAmbient.copy(tr.startAmbient).lerp(tr.endAmbient, starT);
 
-      this.currentStarColor.copy(interpColor);
-      this.sunMaterial.color.copy(interpColor);
-      this.sunMaterial.emissive.copy(interpEmissive);
-      (this.innerGlow.material as THREE.SpriteMaterial).color.copy(interpGlow);
-      (this.outerGlow.material as THREE.SpriteMaterial).color.copy(interpEmissive);
-      this.ambientLight.color.copy(interpAmbient);
+      this.currentStarColor.copy(this.interpColor);
+      this.sunMaterial.color.copy(this.interpColor);
+      this.sunMaterial.emissive.copy(this.interpEmissive);
+      (this.innerGlow.material as THREE.SpriteMaterial).color.copy(this.interpGlow);
+      (this.outerGlow.material as THREE.SpriteMaterial).color.copy(this.interpEmissive);
+      this.ambientLight.color.copy(this.interpAmbient);
 
       // Phase 3 — new planets grow in (0.5→1.0)
       const introT = this.easeInOutCubic(Math.min(Math.max((t - 0.5) / 0.5, 0), 1));
@@ -1096,9 +1748,21 @@ export class GalaxyScene {
     const pulse = 0.35 + Math.sin(this.time * 2.5) * 0.08;
     this.outerGlow.material.opacity = pulse;
 
-    // Smooth camera distance (for transition zoom)
-    this.cameraDistance += (this.cameraTargetDistance - this.cameraDistance) * 0.04;
-    this.cameraAngle += this.cameraSpeed;
+    // Camera orbit — ease toward focus target, otherwise drift
+    if (this.cameraTargetAngle !== null) {
+      const next = this.lerpAngle(this.cameraAngle, this.cameraTargetAngle, this.cameraLerpFactor());
+      if (Math.abs(next - this.cameraTargetAngle) < 0.003) {
+        this.cameraAngle = this.cameraTargetAngle;
+        this.cameraTargetAngle = null;
+      } else {
+        this.cameraAngle = next;
+      }
+    } else if (!this.focusAnim && !this.userOrbiting) {
+      this.cameraAngle += this.reduceMotion ? 0 : this.cameraSpeed;
+    }
+
+    const distLerp = this.reduceMotion ? 0.12 : 0.04;
+    this.cameraDistance += (this.cameraTargetDistance - this.cameraDistance) * distLerp;
     this.camera.position.x = Math.sin(this.cameraAngle) * this.cameraDistance;
     this.camera.position.z = Math.cos(this.cameraAngle) * this.cameraDistance;
     this.camera.position.y = 12 + Math.sin(this.time * 0.15) * 2.5;
@@ -1161,10 +1825,16 @@ export class GalaxyScene {
 
   destroy() {
     this.running = false;
+    this.renderingPaused = true;
+    this.clearFocusAnim();
     cancelAnimationFrame(this.animId);
     window.removeEventListener('resize', this.scheduleResize);
+    this.renderer.domElement.removeEventListener('pointerdown', this.onPointerDown);
+    this.renderer.domElement.removeEventListener('pointermove', this.onPointerMove);
+    this.renderer.domElement.removeEventListener('pointerup', this.onPointerUp);
+    this.renderer.domElement.removeEventListener('pointercancel', this.onPointerUp);
     this.renderer.domElement.removeEventListener('click', this.onClick);
-    this.renderer.domElement.removeEventListener('mousemove', this.onMouseMove);
+    this.renderer.domElement.removeEventListener('wheel', this.onWheel);
     // Dispose all scene objects (geometries, materials, textures)
     this.clearScene();
     // Dispose shared textures created in constructor

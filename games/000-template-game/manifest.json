@@ -1,26 +1,33 @@
 {
   "id": "000-template-game",
-  "title": "Template Game",
-  "description": "A basic game template for Game Galaxy. Replace this with your game description.",
-  "detailedDescription": "This is a starter template for creating new games in the Game Galaxy platform. It includes the basic structure needed for a game to be loaded and displayed correctly. Replace the content with your actual game.",
-  "planetName": "Template World",
+  "title": "Star Salvage (Template)",
+  "description": "Starter template — collect orbs, shoot debris, reach 300 points.",
+  "detailedDescription": "A complete Game Galaxy starter: multi-file architecture (config, engine, renderer, audio, main), sci-fi HUD, touch controls, win/lose flow, and cloud saves via gameBridge. Fork this folder and replace the salvage mini-game with your own.",
+  "planetName": "Template Dock",
   "solarSystemId": "alpha-centauri",
   "solarSystemName": "Alpha Centauri",
-  "planetColor": "#666666",
-  "planetSize": 1.0,
-  "orbitRadius": 5,
-  "orbitSpeed": 0.5,
-  "thumbnail": "",
-  "screenshots": [],
+  "planetColor": "#44dd88",
+  "planetSize": 0.9,
+  "orbitRadius": 4.5,
+  "orbitSpeed": 0.55,
+  "thumbnail": "thumbnail.svg",
   "difficulty": "Easy",
-  "controls": "Game controls will go here",
-  "genre": "Template",
-  "tags": ["template", "starter"],
+  "controls": "← → or A/D move · Space or W fire · Enter start · P pause",
+  "genre": "Arcade, Template",
+  "starter": true,
+  "tags": ["template", "starter", "arcade"],
+  "achievements": [
+    {
+      "id": "template_win",
+      "title": "First Salvage",
+      "description": "Complete the template mission",
+      "icon": "trophy"
+    }
+  ],
   "characteristics": {
-    "type": "rings",
-    "ringColor": "#666666",
-    "ringWidth": 0.5,
-    "ringOpacity": 0.5,
-    "ringCount": 1
+    "type": "atmosphere",
+    "atmosphereColor": "#44dd88",
+    "atmosphereOpacity": 0.32,
+    "atmosphereScale": 1.25
   }
 }

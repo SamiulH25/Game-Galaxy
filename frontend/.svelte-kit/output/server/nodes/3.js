@@ -1,10 +1,8 @@
 
 
 export const index = 3;
-export const universal = {
-  "ssr": false
-};
-export const universal_id = "src/routes/account/+page.ts";
-export const imports = ["_app/immutable/nodes/3.BKwWLruT.js","_app/immutable/chunks/B_B6dp3L.js","_app/immutable/chunks/Dn9xgQUg.js","_app/immutable/chunks/Dmdnmgv8.js","_app/immutable/chunks/JI9kYzpf.js","_app/immutable/chunks/xihTtKlq.js","_app/immutable/chunks/Bu9KHfVW.js"];
-export const stylesheets = ["_app/immutable/assets/3.yblGJbyZ.css"];
+let component_cache;
+export const component = async () => component_cache ??= (await import('../entries/pages/about/_page.svelte.js')).default;
+export const imports = ["_app/immutable/nodes/3.BU7iiqrM.js","_app/immutable/chunks/hDj-oAFh.js","_app/immutable/chunks/DK3Fl9T5.js","_app/immutable/chunks/CLnEWwR0.js","_app/immutable/chunks/D1XvVewT.js","_app/immutable/chunks/H5sprNYw.js","_app/immutable/chunks/xihTtKlq.js","_app/immutable/chunks/C5-_bUSf.js","_app/immutable/chunks/YrhzKqr2.js"];
+export const stylesheets = ["_app/immutable/assets/3.BH_rVo4u.css"];
 export const fonts = [];

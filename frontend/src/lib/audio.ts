@@ -8,6 +8,11 @@ let ctx: AudioContext | null = null;
 let masterGain: GainNode | null = null;
 let enabled = true;
 
+/** Whether the audio context has been created (user gesture). */
+export function isAudioInitialized() {
+  return ctx !== null;
+}
+
 /** Initialise audio context (must be called from a user gesture). */
 export function initAudio() {
   if (ctx) return;

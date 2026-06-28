@@ -1,25 +1,48 @@
 <script lang="ts">
   import { fade, slide } from 'svelte/transition';
-  import { systems, games, currentSystemId, showGame, hasPlayedGame } from '$lib/stores/galaxy';
+  import { systems, games, currentSystemId, launchDiscoveredGame, discoveredGameIds, focusPlanetInGalaxy, newGameCount, acknowledgeNewGames, showOnboardingCoach } from '$lib/stores/galaxy';
+  import { showUnchartedOnly, replayOnboarding } from '$lib/stores/progression';
   import { isAuthenticated } from '$lib/stores/auth';
+  import { isMobile, lockBodyScroll } from '$lib/stores/viewport';
+  import { trapFocus } from '$lib/utils/focusTrap';
   import { play } from '$lib/audio';
   import { settings, resetSettings } from '$lib/stores/settings';
   import ProfileCard from './ProfileCard.svelte';
+  import GalaxyJournal from './GalaxyJournal.svelte';
 
   let { open = $bindable(false) } = $props();
 
-  let activeTab = $state<'games' | 'systems' | 'info' | 'settings' | 'profile'>('games');
+  let activeTab = $state<'games' | 'systems' | 'journal' | 'settings' | 'profile'>('games');
   let searchQuery = $state('');
+  let difficultyFilter = $state<string | null>(null);
+  let genreFilter = $state<string | null>(null);
+  let sheetDragY = $state(0);
+  let panelDialogEl = $state<HTMLElement | null>(null);
+  let touchStartY = 0;
 
   const systemList = $derived($systems);
   const gameList = $derived($games);
   const currentSysId = $derived($currentSystemId);
+
+  const genreOptions = $derived.by(() => {
+    const set = new Set<string>();
+    for (const g of gameList) {
+      if (g.genre) g.genre.split(',').forEach((part: string) => set.add(part.trim()));
+    }
+    return [...set].sort();
+  });
 
   const filteredGames = $derived.by(() => {
     let list = gameList;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter(g => g.title?.toLowerCase().includes(q) || g.tags?.join(' ').toLowerCase().includes(q));
+    }
+    if (difficultyFilter) {
+      list = list.filter((g) => g.difficulty === difficultyFilter);
+    }
+    if (genreFilter) {
+      list = list.filter((g) => g.genre?.includes(genreFilter));
     }
     return list;
   });
@@ -37,11 +60,67 @@
   const totalGames = $derived(gameList.length);
   const totalSystems = $derived(systemList.length);
 
+  let lastSearchFocusId = $state<string | null>(null);
+
+  $effect(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (q.length < 2) {
+      lastSearchFocusId = null;
+      return;
+    }
+    const timer = setTimeout(() => {
+      let list = gameList;
+      list = list.filter(
+        (g) => g.title?.toLowerCase().includes(q) || g.tags?.join(' ').toLowerCase().includes(q)
+      );
+      if (difficultyFilter) list = list.filter((g) => g.difficulty === difficultyFilter);
+      if (genreFilter) list = list.filter((g) => g.genre?.includes(genreFilter));
+      if (list.length === 0) return;
+
+      let pick = list[0];
+      const exact = list.find((g) => g.title?.toLowerCase() === q);
+      const starts = list.filter((g) => g.title?.toLowerCase().startsWith(q));
+      if (exact) pick = exact;
+      else if (starts.length === 1) pick = starts[0];
+      else if (list.length > 1) return;
+
+      if (pick.id !== lastSearchFocusId) {
+        lastSearchFocusId = pick.id;
+        focusPlanetInGalaxy(pick);
+      }
+    }, 420);
+    return () => clearTimeout(timer);
+  });
+
   function launchGame(game: any) {
-    hasPlayedGame.set(true);
-    showGame.set(game);
+    if (!launchDiscoveredGame(game)) {
+      open = false;
+      play('cancel');
+      return;
+    }
     open = false;
     play('select');
+  }
+
+  function focusSearchResult() {
+    const first = filteredGames[0];
+    if (!first) return;
+    focusPlanetInGalaxy(first);
+    open = false;
+    play('select');
+  }
+
+  function onSearchKeydown(e: KeyboardEvent) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      focusSearchResult();
+    }
+  }
+
+  function openJournalTab() {
+    activeTab = 'journal';
+    acknowledgeNewGames();
+    play('click');
   }
 
   function switchSystem(id: string) {
@@ -52,6 +131,35 @@
 
   function starColor(c: string) {
     return c || '#ffffff';
+  }
+
+  $effect(() => {
+    if (!open) return;
+    return lockBodyScroll();
+  });
+
+  $effect(() => {
+    if (!open || !panelDialogEl) return;
+    return trapFocus(panelDialogEl);
+  });
+
+  function onSheetTouchStart(e: TouchEvent) {
+    if (!$isMobile) return;
+    touchStartY = e.touches[0].clientY;
+  }
+
+  function onSheetTouchMove(e: TouchEvent) {
+    if (!$isMobile || !open) return;
+    const dy = e.touches[0].clientY - touchStartY;
+    if (dy > 0) sheetDragY = dy;
+  }
+
+  function onSheetTouchEnd() {
+    if (sheetDragY > 100) {
+      open = false;
+      play('click');
+    }
+    sheetDragY = 0;
   }
 </script>
 
@@ -74,9 +182,19 @@
   <div class="panel-backdrop" role="button" tabindex="-1" aria-label="Close panel" onclick={() => { open = false; play('click'); }} onkeydown={(e) => e.key === 'Escape' && (open = false)} transition:fade={{ duration: 200 }}></div>
 {/if}
 
-<div class="side-panel" class:open class:closed={!open} role="dialog" aria-label="Explorer panel">
+<div class="side-panel" class:open class:closed={!open} class:mobile-sheet={$isMobile} role="dialog" aria-label="Explorer panel" bind:this={panelDialogEl}>
   {#if open}
-    <div class="panel-inner" transition:slide={{ duration: 250, axis: 'x' }}>
+    <div
+      class="panel-inner"
+      style={$isMobile && sheetDragY ? `transform: translateY(${sheetDragY}px)` : undefined}
+      ontouchstart={onSheetTouchStart}
+      ontouchmove={onSheetTouchMove}
+      ontouchend={onSheetTouchEnd}
+      transition:slide={{ duration: 250, axis: $isMobile ? 'y' : 'x' }}
+    >
+      {#if $isMobile}
+        <div class="sheet-grab" aria-hidden="true"></div>
+      {/if}
       <!-- Header -->
       <div class="panel-header">
         <h2>Explorer</h2>
@@ -97,9 +215,12 @@
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>
           Systems
         </button>
-        <button class="tab-btn" class:active={activeTab === 'info'} onclick={() => { activeTab = 'info'; play('click'); }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-          Info
+        <button class="tab-btn" class:active={activeTab === 'journal'} class:has-badge={$newGameCount > 0} onclick={openJournalTab}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          Journal
+          {#if $newGameCount > 0}
+            <span class="tab-badge">{$newGameCount}</span>
+          {/if}
         </button>
         <button class="tab-btn" class:active={activeTab === 'settings'} onclick={() => { activeTab = 'settings'; play('click'); }}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -119,14 +240,46 @@
             <input
               type="text"
               class="search-input"
-              placeholder="Search games…"
+              placeholder="Search games… (Enter to locate)"
               bind:value={searchQuery}
-              oninput={() => play('click')}
+              onkeydown={onSearchKeydown}
             />
             {#if searchQuery}
               <button class="clear-btn" onclick={() => { searchQuery = ''; play('click'); }}>✕</button>
             {/if}
           </div>
+
+          <div class="filter-row">
+            <button
+              class="filter-chip"
+              class:active={!difficultyFilter}
+              onclick={() => { difficultyFilter = null; play('click'); }}
+            >All</button>
+            {#each ['Easy', 'Medium', 'Hard'] as diff}
+              <button
+                class="filter-chip"
+                class:active={difficultyFilter === diff}
+                onclick={() => { difficultyFilter = difficultyFilter === diff ? null : diff; play('click'); }}
+              >{diff}</button>
+            {/each}
+            <button
+              class="filter-chip filter-uncharted"
+              class:active={$showUnchartedOnly}
+              onclick={() => { showUnchartedOnly.update((v) => !v); play('click'); }}
+            >Uncharted</button>
+          </div>
+
+          {#if genreOptions.length > 0}
+            <div class="filter-row filter-row-wrap">
+              {#each genreOptions.slice(0, 6) as genre}
+                <button
+                  class="filter-chip filter-chip-sm"
+                  class:active={genreFilter === genre}
+                  onclick={() => { genreFilter = genreFilter === genre ? null : genre; play('click'); }}
+                >{genre}</button>
+              {/each}
+            </div>
+          {/if}
 
           <div class="games-scroll">
             {#if Object.keys(gamesBySystem).length === 0}
@@ -142,9 +295,19 @@
                 </div>
                 <div class="sys-games">
                   {#each sysGames as game}
-                    <button class="game-item" onclick={() => launchGame(game)}>
-                      <span class="game-planet" style="background: {game.planetColor || '#444'};"></span>
-                      <span class="game-title">{game.title}</span>
+                    {@const discovered = $discoveredGameIds.has(game.id)}
+                    <button
+                      class="game-item"
+                      class:undiscovered={!discovered}
+                      class:locked={!discovered}
+                      onclick={() => launchGame(game)}
+                      title={discovered ? game.title : 'Discover in the galaxy first'}
+                    >
+                      <span class="game-planet" class:mystery={!discovered} style="background: {game.planetColor || '#444'};"></span>
+                      <span class="game-title">{discovered ? game.title : '???'}</span>
+                      {#if discovered && game.difficulty}
+                        <span class="game-diff">{game.difficulty[0]}</span>
+                      {/if}
                     </button>
                   {/each}
                 </div>
@@ -184,47 +347,10 @@
         </div>
       {/if}
 
-      <!-- Tab: Info -->
-      {#if activeTab === 'info'}
-        <div class="tab-content">
-          <div class="info-scroll">
-            <div class="info-card">
-              <div class="info-card-header">Galaxy Stats</div>
-              <div class="info-row"><span>Total Systems</span><span class="info-val">{totalSystems}</span></div>
-              <div class="info-row"><span>Total Games</span><span class="info-val">{totalGames}</span></div>
-              <div class="info-row">
-                <span>Current System</span>
-                <span class="info-val">{systemList.find(s => s.id === currentSysId)?.name || 'None'}</span>
-              </div>
-            </div>
-
-            <div class="info-card">
-              <div class="info-card-header">Quick Tips</div>
-              <ul class="tip-list">
-                <li>Click a star to select its solar system</li>
-                <li>Click a planet to view and launch a game</li>
-                <li>Press <kbd>Esc</kbd> to close the game frame</li>
-                <li>Press <kbd>S</kbd> to save your game</li>
-                <li>Log in to save progress to the cloud</li>
-              </ul>
-            </div>
-
-            {#if !$isAuthenticated}
-              <div class="info-card info-card--accent">
-                <div class="info-card-header">Cloud Saves</div>
-                <p class="info-text">Sign in to sync your save data across devices and never lose progress.</p>
-              </div>
-            {/if}
-
-            <div class="info-card">
-              <div class="info-card-header">Keyboard Shortcuts</div>
-              <div class="shortcut-grid">
-                <span class="shortcut-key"><kbd>Esc</kbd></span><span>Close game</span>
-                <span class="shortcut-key"><kbd>S</kbd></span><span>Save game</span>
-                <span class="shortcut-key"><kbd>←</kbd><kbd>→</kbd></span><span>Navigate systems</span>
-              </div>
-            </div>
-          </div>
+      <!-- Tab: Journal -->
+      {#if activeTab === 'journal'}
+        <div class="tab-content tab-content-flex">
+          <GalaxyJournal onLaunch={() => { open = false; }} />
         </div>
       {/if}
 
@@ -415,6 +541,18 @@
 
               <div class="setting-row setting-toggle">
                 <div class="setting-info">
+                  <span class="setting-label">Reduce Motion</span>
+                  <span class="setting-desc">Minimize hero, reveal, and camera animations</span>
+                </div>
+                <button
+                  class="toggle" class:on={$settings.reduceMotion}
+                  onclick={() => { settings.update(s => ({ ...s, reduceMotion: !s.reduceMotion })); play('click'); }}
+                  role="switch" aria-checked={$settings.reduceMotion} aria-label="Toggle reduce motion"
+                ><span class="toggle-knob"></span></button>
+              </div>
+
+              <div class="setting-row setting-toggle">
+                <div class="setting-info">
                   <span class="setting-label">Auto-Save</span>
                   <span class="setting-desc">Automatically save game progress</span>
                 </div>
@@ -436,6 +574,54 @@
                   role="switch" aria-checked={$settings.confirmCloseGame} aria-label="Toggle confirm close"
                 ><span class="toggle-knob"></span></button>
               </div>
+
+              <div class="setting-row setting-toggle">
+                <div class="setting-info">
+                  <span class="setting-label">Double-tap Launch</span>
+                  <span class="setting-desc">Double-tap a planet to launch instantly</span>
+                </div>
+                <button
+                  class="toggle" class:on={$settings.doubleTapLaunch}
+                  onclick={() => { settings.update(s => ({ ...s, doubleTapLaunch: !s.doubleTapLaunch })); play('click'); }}
+                  role="switch" aria-checked={$settings.doubleTapLaunch} aria-label="Toggle double-tap launch"
+                ><span class="toggle-knob"></span></button>
+              </div>
+
+              <div class="setting-row setting-toggle">
+                <div class="setting-info">
+                  <span class="setting-label">Mobile Fullscreen</span>
+                  <span class="setting-desc">Auto fullscreen when launching on phone</span>
+                </div>
+                <button
+                  class="toggle" class:on={$settings.mobileAutoFullscreen}
+                  onclick={() => { settings.update(s => ({ ...s, mobileAutoFullscreen: !s.mobileAutoFullscreen })); play('click'); }}
+                  role="switch" aria-checked={$settings.mobileAutoFullscreen} aria-label="Toggle mobile auto fullscreen"
+                ><span class="toggle-knob"></span></button>
+              </div>
+
+              <div class="setting-row setting-toggle">
+                <div class="setting-info">
+                  <span class="setting-label">Haptic Feedback</span>
+                  <span class="setting-desc">Vibration on discoveries and rank-ups</span>
+                </div>
+                <button
+                  class="toggle" class:on={$settings.hapticsEnabled}
+                  onclick={() => { settings.update(s => ({ ...s, hapticsEnabled: !s.hapticsEnabled })); play('click'); }}
+                  role="switch" aria-checked={$settings.hapticsEnabled} aria-label="Toggle haptics"
+                ><span class="toggle-knob"></span></button>
+              </div>
+
+              <div class="setting-row setting-toggle">
+                <div class="setting-info">
+                  <span class="setting-label">High Contrast</span>
+                  <span class="setting-desc">Stronger text and border contrast</span>
+                </div>
+                <button
+                  class="toggle" class:on={$settings.highContrast}
+                  onclick={() => { settings.update(s => ({ ...s, highContrast: !s.highContrast })); play('click'); }}
+                  role="switch" aria-checked={$settings.highContrast} aria-label="Toggle high contrast"
+                ><span class="toggle-knob"></span></button>
+              </div>
             </div>
 
             <!-- Advanced -->
@@ -452,6 +638,22 @@
                   onclick={() => { settings.update(s => ({ ...s, fpsDisplay: !s.fpsDisplay })); play('click'); }}
                   role="switch" aria-checked={$settings.fpsDisplay} aria-label="Toggle FPS counter"
                 ><span class="toggle-knob"></span></button>
+              </div>
+
+              <div class="setting-row">
+                <div class="setting-info">
+                  <span class="setting-label">Replay Tour</span>
+                  <span class="setting-desc">Show the galaxy onboarding coach again</span>
+                </div>
+                <button
+                  class="reset-btn"
+                  onclick={() => {
+                    replayOnboarding();
+                    showOnboardingCoach.set(true);
+                    open = false;
+                    play('click');
+                  }}
+                >Replay</button>
               </div>
 
               <div class="setting-row">
@@ -590,12 +792,80 @@
   .tab-btn:hover { color: var(--text-secondary); background: rgba(255,255,255,0.02); }
   .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
 
+  .tab-btn.has-badge {
+    position: relative;
+  }
+
+  .tab-badge {
+    position: absolute;
+    top: 4px;
+    right: 2px;
+    min-width: 14px;
+    height: 14px;
+    padding: 0 4px;
+    border-radius: 7px;
+    background: var(--accent);
+    color: #0a0a18;
+    font-size: 9px;
+    font-weight: 800;
+    line-height: 14px;
+    text-align: center;
+  }
+
   /* ─── Tab content ─── */
   .tab-content {
     flex: 1;
     overflow: hidden;
     display: flex;
     flex-direction: column;
+  }
+
+  .tab-content-flex {
+    overflow: hidden;
+  }
+
+  .filter-row {
+    display: flex;
+    gap: 6px;
+    padding: 0 var(--space-lg) var(--space-sm);
+    flex-shrink: 0;
+  }
+
+  .filter-row-wrap {
+    flex-wrap: wrap;
+    padding-top: 0;
+  }
+
+  .filter-chip {
+    padding: 4px 10px;
+    border-radius: 100px;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-family: 'DM Sans', system-ui, sans-serif;
+    transition: all 0.15s var(--ease-out);
+  }
+
+  .filter-chip-sm {
+    text-transform: none;
+    font-size: 10px;
+    letter-spacing: 0;
+  }
+
+  .filter-chip:hover {
+    border-color: var(--border-hover);
+    color: var(--text-secondary);
+  }
+
+  .filter-chip.active {
+    border-color: rgba(232, 168, 56, 0.3);
+    background: rgba(232, 168, 56, 0.1);
+    color: var(--accent);
   }
 
   /* ─── Search ─── */
@@ -696,6 +966,24 @@
     transition: background 0.1s, color 0.1s;
   }
   .game-item:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+  .game-item.undiscovered { opacity: 0.55; }
+  .game-item.locked { cursor: not-allowed; }
+  .game-item.undiscovered .game-title { font-style: italic; color: var(--text-muted); }
+  .game-planet.mystery {
+    background: #555570 !important;
+    box-shadow: none;
+    border: 1px dashed rgba(255, 255, 255, 0.15);
+  }
+  .game-diff {
+    font-size: 8px;
+    font-weight: 700;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.04);
+    padding: 2px 5px;
+    border-radius: 3px;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
   .game-planet { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
   .game-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
@@ -1019,4 +1307,44 @@
   }
   .profile-scroll::-webkit-scrollbar { width: 4px; }
   .profile-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  @media (max-width: 640px) {
+    .side-panel.mobile-sheet {
+      top: auto;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      width: 100%;
+      height: min(92dvh, calc(100dvh - var(--chrome-top, 48px)));
+    }
+
+    .side-panel.mobile-sheet .panel-inner {
+      border-left: none;
+      border-top: 1px solid var(--border);
+      border-radius: var(--radius-md) var(--radius-md) 0 0;
+    }
+
+    .panel-tabs .tab-btn {
+      min-height: 44px;
+      padding-top: 10px;
+      padding-bottom: 10px;
+    }
+
+    .panel-trigger {
+      bottom: calc(var(--space-lg) + env(safe-area-inset-bottom, 0px));
+    }
+
+    .sheet-grab {
+      width: 40px;
+      height: 4px;
+      border-radius: 2px;
+      background: rgba(255, 255, 255, 0.2);
+      margin: 8px auto 4px;
+      flex-shrink: 0;
+    }
+
+    .panel-inner {
+      transition: transform 0.1s ease-out;
+    }
+  }
 </style>

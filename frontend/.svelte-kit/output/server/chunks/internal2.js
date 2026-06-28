@@ -1,5 +1,6 @@
-import { $ as define_property, A as get_first_child, B as async_mode_flag, C as active_reaction, D as component_root, E as set_active_reaction, F as flushSync, G as hydration_mismatch, H as hydrating, I as boundary, J as HYDRATION_ERROR, L as component_context, M as init_operations, N as mutable_source, O as clear_text_content, P as set, Q as array_from, R as pop, S as active_effect, T as set_active_effect, U as set_hydrate_node, V as hydrate_node, W as set_hydrating, X as LEGACY_PROPS, Y as hydration_failed, c as derived, h as setContext, j as get_next_sibling, k as create_text, u as render, v as is_passive_event, w as get, z as push } from "./index-server.js";
+import { c as derived, d as render, g as setContext, y as is_passive_event } from "./index-server.js";
 import "./internal.js";
+import { A as hydration_mismatch, B as LEGACY_PROPS, C as push, D as hydrating, E as hydrate_node, F as hydration_failed, G as define_property, N as HYDRATION_ERROR, O as set_hydrate_node, S as pop, T as async_mode_flag, U as array_from, _ as mutable_source, b as boundary, c as get, d as component_root, f as clear_text_content, g as init_operations, h as get_next_sibling, k as set_hydrating, l as set_active_effect, m as get_first_child, o as active_effect, p as create_text, s as active_reaction, u as set_active_reaction, v as set, x as component_context, y as flushSync } from "./shared2.js";
 //#region \0virtual:__sveltekit/server
 var read_implementation = null;
 function set_read_implementation(fn) {
@@ -567,10 +568,10 @@ var options = {
 	service_worker_options: void 0,
 	server_error_boundaries: false,
 	templates: {
-		app: ({ head, body, assets, nonce, env }) => "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\" />\n    <link rel=\"icon\" type=\"image/png\" href=\"/favicon.png\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />\n    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />\n    <link href=\"https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap\" rel=\"stylesheet\" />\n    <title>Game Galaxy</title>\n    " + head + "\n  </head>\n  <body data-sveltekit-prerender=\"true\">\n    <div style=\"display: contents\">" + body + "</div>\n  </body>\n</html>\n",
+		app: ({ head, body, assets, nonce, env }) => "<!doctype html>\n<html lang=\"en\">\n  <head>\n    <meta charset=\"utf-8\" />\n    <link rel=\"icon\" type=\"image/png\" href=\"/favicon.png\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\" />\n    <meta name=\"mobile-web-app-capable\" content=\"yes\" />\n    <meta name=\"apple-mobile-web-app-capable\" content=\"yes\" />\n    <meta name=\"apple-mobile-web-app-status-bar-style\" content=\"black-translucent\" />\n    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\" />\n    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin />\n    <link href=\"https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap\" rel=\"stylesheet\" />\n    <title>Game Galaxy</title>\n    " + head + "\n  </head>\n  <body data-sveltekit-prerender=\"true\">\n    <div style=\"display: contents\">" + body + "</div>\n  </body>\n</html>\n",
 		error: error_template_default
 	},
-	version_hash: "wfwnh2"
+	version_hash: "al73bl"
 };
 async function get_hooks() {
 	let handle;
@@ -578,6 +579,7 @@ async function get_hooks() {
 	let handleError;
 	let handleValidationError;
 	let init;
+	({handle, handleFetch, handleError, handleValidationError, init} = await import("../entries/hooks.server.js"));
 	let reroute;
 	let transport;
 	return {

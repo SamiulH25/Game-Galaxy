@@ -1,2 +1,2 @@
-import "./index-server.js";
+import "./shared2.js";
 export {};

@@ -2,20 +2,52 @@
 
 A 3D galaxy of playable HTML games. Explore solar systems, click planets, and play games with persistent cloud saves.
 
-Built with **Python FastAPI + Astro + Three.js**. Each solar system has a unique star with distinct color and lighting, and every game sits on its own procedurally-generated planet with visual characteristics (rings, moons, atmospheres, asteroid belts).
+Built with **Python FastAPI + SvelteKit + Three.js**. Each solar system has a unique star with distinct color and lighting, and every game sits on its own procedurally-generated planet with visual characteristics (rings, moons, atmospheres, asteroid belts).
 
 ## Quick Start
 
-Both services need to run together. Open **two terminals** (or use the root-level script below).
+**Prerequisites:** Node.js 18+, Python 3.11+
+
+```bash
+npm run setup          # first time: venv, deps, .env, DB migrations
+npm run start:prod     # build + serve everything on http://localhost:4321
+```
+
+On Windows you can also double-click **`setup.bat`**.
+
+**Docker (no local Python/Node on server):**
+
+```bash
+cp .env.example .env   # set SECRET_KEY
+docker compose up --build
+```
+
+Full details: **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** — Linux systemd, Windows, reverse proxy, troubleshooting.
+
+**Server-side game dev** (SSH, Cursor CLI, live `games/` hosting): **[docs/SERVER-DEV.md](docs/SERVER-DEV.md)**
+
+### Development (hot reload)
+
+Both services need to run together:
+
+```bash
+npm run setup
+npm run dev
+```
+
+Open **http://localhost:5173** (Vite proxies `/api` and `/games` to the backend on :8000).
+
+<details>
+<summary>Manual dev setup (two terminals)</summary>
 
 ### Terminal 1 — Backend
 ```bash
 cd backend
 python -m venv venv
-venv\Scripts\activate   # Windows
+# Windows: venv\Scripts\activate  |  Linux: source venv/bin/activate
 pip install -r requirements.txt
 alembic upgrade head
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --port 8000
 ```
 
 ### Terminal 2 — Frontend
@@ -24,14 +56,13 @@ cd frontend
 npm install
 npm run dev
 ```
+</details>
 
-### Single-command start (requires both terminals above to have been set up once)
-```bash
-npm run dev
+### Legacy Windows scripts
+```powershell
+npm run start:dev      # dev with logs
+npm run start:prod:ps1 # production (PowerShell)
 ```
-This uses `concurrently` (via npx) to run both services at once.
-
-Open **http://localhost:4321** after both are running. The Astro dev server proxies `/api` and `/games` to the backend.
 
 ## Features
 
@@ -53,7 +84,9 @@ Open **http://localhost:4321** after both are running. The Astro dev server prox
 | `GET` | `/api/auth/me` | Bearer | Current user info |
 | `GET` | `/api/games` | — | All game manifests, sorted by title |
 | `GET` | `/api/games/systems` | — | Solar systems with game counts and star properties |
+| `GET` | `/api/games/catalog` | — | Catalog generation + count (for live reload polling) |
 | `GET` | `/api/games/{game_id}` | — | Single game manifest by folder name |
+| `POST` | `/api/games/rescan` | `X-Games-Rescan-Token` (or `DEBUG=true`) | Re-scan manifests from disk |
 | `GET` | `/api/saves/{game_id}` | Bearer | Load save data |
 | `PUT` | `/api/saves/{game_id}` | Bearer | Upsert save data |
 

@@ -7,6 +7,10 @@
 var ctx = null;
 var masterGain = null;
 var enabled = true;
+/** Whether the audio context has been created (user gesture). */
+function isAudioInitialized() {
+	return ctx !== null;
+}
 /** Initialise audio context (must be called from a user gesture). */
 function initAudio() {
 	if (ctx) return;
@@ -275,4 +279,4 @@ function notification(c, dest) {
 	});
 }
 //#endregion
-export { play as n, setVolume as r, initAudio as t };
+export { setVolume as i, isAudioInitialized as n, play as r, initAudio as t };

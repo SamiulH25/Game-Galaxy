@@ -42,6 +42,7 @@
 
       // Listen for auth token from parent frame
       window.addEventListener('message', function(e) {
+        if (e.origin !== window.location.origin) return;
         var msg = e.data;
         if (msg && msg.type === 'galaxy-auth') {
           _token = msg.token;
@@ -51,7 +52,7 @@
       });
 
       // Tell parent we're alive and ready for auth
-      window.parent.postMessage({ type: 'galaxy-ready' }, '*');
+      window.parent.postMessage({ type: 'galaxy-ready' }, window.location.origin);
 
       // API methods callable from Godot via JavaScriptBridge
       window.GalaxyAPI = {

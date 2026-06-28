@@ -13,6 +13,26 @@ export function getApiToken() {
 
 const REQUEST_TIMEOUT = 15_000; // 15 seconds
 
+/** @param {unknown} err */
+export function parseApiError(err) {
+  if (!err) return 'Something went wrong.';
+  const msg = err instanceof Error ? err.message : String(err);
+  if (msg === 'Request timed out') return 'Request timed out. Check your connection.';
+  if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+    return "Couldn't reach the server. Your local progress is safe.";
+  }
+  try {
+    const parsed = JSON.parse(msg);
+    if (typeof parsed.detail === 'string') return parsed.detail;
+    if (Array.isArray(parsed.detail)) {
+      return parsed.detail.map((d) => (typeof d === 'string' ? d : d.msg || String(d))).join(', ');
+    }
+  } catch {
+    /* not JSON */
+  }
+  return msg.length > 120 ? 'Something went wrong.' : msg;
+}
+
 /**
  * @param {string} path
  * @param {RequestInit & {headers?: Record<string,string>}} [options]
@@ -83,6 +103,11 @@ export function fetchGame(id) {
 
 export function fetchSystems() {
   return apiFetch('/api/games/systems');
+}
+
+/** Lightweight catalog version — used to detect new games on the server. */
+export function fetchGamesCatalog() {
+  return apiFetch('/api/games/catalog');
 }
 
 // Saves

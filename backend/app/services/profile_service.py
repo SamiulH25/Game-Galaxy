@@ -1,10 +1,10 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import select, func, distinct, desc
+from sqlalchemy import select, desc, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.db import UserAchievement, GameSave, LeaderboardEntry, User
-from app.services.game_scanner import games_cache
+from app.models.db import UserAchievement, User
+from app.services.game_scanner import games_cache, total_achievements_count
 from app.services.universal_achievement_scanner import universal_achievements_cache
 
 
@@ -12,44 +12,25 @@ async def get_profile(db: AsyncSession, user: User) -> dict:
     """Build aggregated profile data for a user."""
     user_id = user.id
 
-    # Games played (distinct game_ids in saves)
-    result = await db.execute(
-        select(func.count(distinct(GameSave.game_id)))
-        .where(GameSave.user_id == user_id)
+    stats_result = await db.execute(
+        text("""
+            SELECT
+                (SELECT COUNT(DISTINCT game_id) FROM game_saves WHERE user_id = :uid),
+                (SELECT COUNT(*) FROM game_saves WHERE user_id = :uid),
+                (SELECT COUNT(*) FROM user_achievements WHERE user_id = :uid),
+                (SELECT COUNT(*) FROM leaderboard_entries WHERE user_id = :uid)
+        """),
+        {"uid": user_id},
     )
-    games_played = result.scalar() or 0
+    row = stats_result.fetchone()
+    games_played = row[0] or 0
+    total_saves = row[1] or 0
+    achievements_unlocked = row[2] or 0
+    leaderboard_entries = row[3] or 0
 
-    # Total saves
-    result = await db.execute(
-        select(func.count(GameSave.id))
-        .where(GameSave.user_id == user_id)
-    )
-    total_saves = result.scalar() or 0
-
-    # Achievements unlocked
-    result = await db.execute(
-        select(func.count(UserAchievement.id))
-        .where(UserAchievement.user_id == user_id)
-    )
-    achievements_unlocked = result.scalar() or 0
-
-    # Total possible achievements
-    total_achievements = len(universal_achievements_cache)
-    for game_data in games_cache.values():
-        total_achievements += len(game_data.get("achievements", []))
-
-    # Leaderboard entries
-    result = await db.execute(
-        select(func.count(LeaderboardEntry.id))
-        .where(LeaderboardEntry.user_id == user_id)
-    )
-    leaderboard_entries = result.scalar() or 0
-
-    # Account age
     created = user.created_at.replace(tzinfo=None) if user.created_at.tzinfo else user.created_at
     account_age_days = (datetime.now(timezone.utc).replace(tzinfo=None) - created).days
 
-    # Recent achievements (last 5)
     result = await db.execute(
         select(UserAchievement)
         .where(UserAchievement.user_id == user_id)
@@ -58,32 +39,21 @@ async def get_profile(db: AsyncSession, user: User) -> dict:
     )
     recent = result.scalars().all()
 
+    ach_lookup: dict[str, tuple[str, str]] = {}
+    for ach in universal_achievements_cache:
+        ach_lookup[f"universal:{ach['id']}"] = (ach["title"], ach.get("icon", "star"))
+    for gid, game_data in games_cache.items():
+        for ach in game_data.get("achievements", []):
+            ach_lookup[f"game:{gid}:{ach['id']}"] = (ach["title"], ach.get("icon", "star"))
+
     recent_achievements = []
     for ra in recent:
-        key = ra.achievement_key
-        title = key
-        icon = "star"
-        unlocked_at = ra.unlocked_at
-
-        if ra.game_id:
-            game_data = games_cache.get(ra.game_id, {})
-            for ach in game_data.get("achievements", []):
-                if f"game:{ra.game_id}:{ach['id']}" == key:
-                    title = ach["title"]
-                    icon = ach.get("icon", "star")
-                    break
-        else:
-            for ach in universal_achievements_cache:
-                if f"universal:{ach['id']}" == key:
-                    title = ach["title"]
-                    icon = ach.get("icon", "star")
-                    break
-
+        title, icon = ach_lookup.get(ra.achievement_key, (ra.achievement_key, "star"))
         recent_achievements.append({
-            "achievement_key": key,
+            "achievement_key": ra.achievement_key,
             "title": title,
             "icon": icon,
-            "unlocked_at": unlocked_at,
+            "unlocked_at": ra.unlocked_at,
         })
 
     return {
@@ -92,7 +62,7 @@ async def get_profile(db: AsyncSession, user: User) -> dict:
             "games_played": games_played,
             "total_saves": total_saves,
             "achievements_unlocked": achievements_unlocked,
-            "total_achievements": total_achievements,
+            "total_achievements": total_achievements_count + len(universal_achievements_cache),
             "leaderboard_entries": leaderboard_entries,
             "account_age_days": account_age_days,
         },

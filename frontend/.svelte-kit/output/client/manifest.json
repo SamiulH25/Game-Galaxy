@@ -1,0 +1,24 @@
+{
+  "name": "Game Galaxy",
+  "short_name": "Galaxy",
+  "description": "Explore a 3D galaxy of browser games. Play free — sync progress when you sign in.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#0a0a2e",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "32x32",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "32x32",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

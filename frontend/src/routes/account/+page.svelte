@@ -1,17 +1,20 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { get } from 'svelte/store';
   import { fade, fly } from 'svelte/transition';
   import { goto } from '$app/navigation';
   import { isAuthenticated, user, logoutUser } from '$lib/stores/auth';
   import { play } from '$lib/audio';
   import { profile, achievements, profileStats, recentAchievements, loadProfile, loadAchievements, loadLeaderboard, leaderboards } from '$lib/stores/social';
-  import { systems, games } from '$lib/stores/galaxy';
-  import { loadGalaxyData } from '$lib/stores/galaxy';
+  import { systems, games, loadGalaxyData, lastPlayedGame, focusPlanetInGalaxy, selectedPlanet } from '$lib/stores/galaxy';
+  import { formatScoreData } from '$lib/utils/scores';
 
   let activeTab = $state<'stats' | 'achievements' | 'leaderboards'>('stats');
   let selectedLbGame = $state<string | null>(null);
   let lbView = $state<'best' | 'latest'>('best');
   let mounted = $state(false);
+  let lbLoading = $state(false);
+  let profileError = $state<string | null>(null);
 
   const gameList = $derived($games);
   const systemList = $derived($systems);
@@ -34,9 +37,48 @@
     mounted = true;
     play('pageEnter');
     if (!$isAuthenticated) { goto('/'); return; }
-    await Promise.all([loadProfile(), loadAchievements()]);
-    if (lbGames.length > 0) selectedLbGame = lbGames[0].id;
+
+    try {
+      if (get(games).length === 0) await loadGalaxyData();
+    } catch {
+      /* offline — lb game list may be empty */
+    }
+
+    try {
+      await Promise.all([loadProfile(), loadAchievements()]);
+    } catch {
+      profileError = 'Could not load profile. Try refreshing.';
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('tab');
+    if (tab === 'leaderboards' || tab === 'achievements' || tab === 'stats') {
+      activeTab = tab;
+    }
+
+    const gameId = params.get('game');
+    const list = get(games).filter((g: any) => g.id);
+    if (gameId && list.some((g: any) => g.id === gameId)) {
+      selectedLbGame = gameId;
+    } else if (list.length > 0) {
+      selectedLbGame = list[0].id;
+    }
+
+    if (activeTab === 'leaderboards' && selectedLbGame) {
+      lbLoading = true;
+      await loadLeaderboard(selectedLbGame, lbView);
+      lbLoading = false;
+    }
   });
+
+  function selectTab(tab: 'stats' | 'achievements' | 'leaderboards') {
+    activeTab = tab;
+    play('click');
+    if (tab === 'leaderboards' && selectedLbGame) {
+      lbLoading = true;
+      loadLeaderboard(selectedLbGame, lbView).finally(() => { lbLoading = false; });
+    }
+  }
 
   function handleSignOut() {
     play('cancel');
@@ -49,16 +91,34 @@
     goto('/');
   }
 
+  function returnToLastPlanet() {
+    const last = get(lastPlayedGame);
+    if (!last) { goBack(); return; }
+    play('select');
+    goto('/');
+    setTimeout(() => {
+      const game = get(games).find((g: { id: string }) => g.id === last.id);
+      if (game) {
+        focusPlanetInGalaxy(game);
+        selectedPlanet.set({ ...game });
+      }
+    }, 300);
+  }
+
   function switchLbGame(id: string) {
     selectedLbGame = id;
     play('click');
-    loadLeaderboard(id, lbView);
+    lbLoading = true;
+    loadLeaderboard(id, lbView).finally(() => { lbLoading = false; });
   }
 
   function switchLbView(view: 'best' | 'latest') {
     lbView = view;
     play('click');
-    if (selectedLbGame) loadLeaderboard(selectedLbGame, view);
+    if (selectedLbGame) {
+      lbLoading = true;
+      loadLeaderboard(selectedLbGame, view).finally(() => { lbLoading = false; });
+    }
   }
 
   const joinDate = $derived($user?.created_at
@@ -84,6 +144,9 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
         Galaxy
       </button>
+      {#if $lastPlayedGame}
+        <button class="continue-galaxy-btn" onclick={returnToLastPlanet}>Return to {$lastPlayedGame.title}</button>
+      {/if}
       <button class="signout-btn" onclick={handleSignOut}>Sign Out</button>
     </nav>
 
@@ -100,11 +163,15 @@
           </div>
         </div>
 
+        {#if profileError}
+          <p class="profile-error" role="alert">{profileError}</p>
+        {/if}
+
         <!-- Tabs -->
         <div class="profile-tabs">
-          <button class="tab-btn" class:active={activeTab === 'stats'} onclick={() => { activeTab = 'stats'; play('click'); }}>Stats</button>
-          <button class="tab-btn" class:active={activeTab === 'achievements'} onclick={() => { activeTab = 'achievements'; play('click'); }}>Achievements</button>
-          <button class="tab-btn" class:active={activeTab === 'leaderboards'} onclick={() => { activeTab = 'leaderboards'; play('click'); }}>Leaderboards</button>
+          <button class="tab-btn" class:active={activeTab === 'stats'} onclick={() => selectTab('stats')}>Stats</button>
+          <button class="tab-btn" class:active={activeTab === 'achievements'} onclick={() => selectTab('achievements')}>Achievements</button>
+          <button class="tab-btn" class:active={activeTab === 'leaderboards'} onclick={() => selectTab('leaderboards')}>Leaderboards</button>
         </div>
 
         <!-- Stats Tab -->
@@ -199,24 +266,31 @@
               </div>
             </div>
 
-            {#if currentLb}
+            {#if lbLoading}
+              <p class="empty">Loading leaderboard…</p>
+            {:else if currentLb}
               <div class="lb-table">
                 {#if currentLb.user_entry}
                   <div class="lb-user-row">
                     <span class="lb-rank">#{currentLb.user_rank || '—'}</span>
                     <span class="lb-name">{currentLb.user_entry.username}</span>
-                    <span class="lb-score">{JSON.stringify(currentLb.user_entry.score_data)}</span>
+                    <span class="lb-score">{formatScoreData(currentLb.user_entry.score_data)}</span>
                   </div>
                 {/if}
                 {#each currentLb.entries as entry}
                   <div class="lb-row" class:is-self={currentLb.user_entry?.username === entry.username}>
                     <span class="lb-rank">#{entry.rank}</span>
                     <span class="lb-name">{entry.username}</span>
-                    <span class="lb-score">{JSON.stringify(entry.score_data)}</span>
+                    <span class="lb-score">{formatScoreData(entry.score_data)}</span>
                     <span class="lb-date">{new Date(entry.submitted_at).toLocaleDateString()}</span>
                   </div>
                 {/each}
+                {#if currentLb.entries.length === 0}
+                  <p class="empty">No scores yet — be the first to play.</p>
+                {/if}
               </div>
+            {:else if lbGames.length === 0}
+              <p class="empty">Galaxy catalog offline. Return to the galaxy and retry.</p>
             {:else}
               <p class="empty">Select a game to view its leaderboard.</p>
             {/if}
@@ -241,7 +315,22 @@
   .nebula-1 { width: 500px; height: 500px; top: -150px; left: -100px; background: radial-gradient(circle, rgba(232,168,56,0.3) 0%, transparent 70%); }
   .nebula-2 { width: 400px; height: 400px; bottom: -100px; right: -80px; background: radial-gradient(circle, rgba(56,200,232,0.25) 0%, transparent 70%); animation-delay: 3s; }
 
-  .top-nav { position: relative; z-index: 10; padding: var(--space-md) var(--space-lg); border-bottom: 1px solid rgba(255,255,255,0.06); background: rgba(8,8,24,0.92); display: flex; justify-content: space-between; align-items: center; }
+  .top-nav { position: relative; z-index: 10; padding: var(--space-md) var(--space-lg); border-bottom: 1px solid rgba(255,255,255,0.06); background: rgba(8,8,24,0.92); display: flex; justify-content: space-between; align-items: center; gap: var(--space-sm); flex-wrap: wrap; }
+  .continue-galaxy-btn {
+    background: rgba(232,168,56,0.08);
+    border: 1px solid rgba(232,168,56,0.22);
+    color: var(--accent);
+    padding: clamp(6px,0.4vw,8px) clamp(12px,0.8vw,18px);
+    border-radius: var(--radius-sm);
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    font-family: 'DM Sans', system-ui, sans-serif;
+    cursor: pointer;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .back-btn { display: inline-flex; align-items: center; gap: 8px; background: none; border: 1px solid rgba(255,255,255,0.08); color: var(--text-secondary); padding: clamp(6px,0.4vw,8px) clamp(12px,0.8vw,18px); border-radius: var(--radius-sm); font-size: var(--fs-xs); font-weight: 500; font-family: 'DM Sans', system-ui, sans-serif; cursor: pointer; transition: all 0.15s var(--ease-out); }
   .back-btn:hover { border-color: var(--border-hover); color: var(--text); background: rgba(255,255,255,0.03); }
   .signout-btn { background: rgba(232,80,80,0.08); border: 1px solid var(--error-border); color: var(--error); padding: clamp(6px,0.4vw,8px) clamp(12px,0.8vw,18px); border-radius: var(--radius-sm); font-size: var(--fs-xs); font-weight: 600; cursor: pointer; font-family: 'DM Sans', system-ui, sans-serif; }
@@ -306,6 +395,58 @@
 
   .empty { text-align: center; color: var(--text-muted); font-size: var(--fs-sm); padding: var(--space-xl); }
 
+  .profile-error {
+    padding: var(--space-sm) var(--space-md);
+    background: var(--error-bg);
+    border: 1px solid var(--error-border);
+    border-radius: var(--radius-sm);
+    color: var(--error);
+    font-size: var(--fs-xs);
+  }
+
   @keyframes twinkle { 0% { opacity: 0.5; } 100% { opacity: 1; } }
   @keyframes nebulaPulse { 0% { opacity: 0.15; transform: scale(1); } 100% { opacity: 0.3; transform: scale(1.1); } }
+
+  @media (max-width: 640px) {
+    .top-nav {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: rgba(8, 8, 24, 0.96);
+      padding-top: max(var(--space-sm), env(safe-area-inset-top));
+      flex-wrap: wrap;
+      gap: var(--space-xs);
+    }
+
+    .back-btn, .signout-btn, .continue-galaxy-btn {
+      min-height: 48px;
+    }
+
+    .profile-tabs {
+      position: sticky;
+      top: 52px;
+      z-index: 2;
+      background: rgba(8, 8, 24, 0.96);
+    }
+
+    .tab-btn {
+      min-height: 48px;
+      flex: 1;
+      padding: 12px 8px;
+    }
+
+    .lb-select {
+      min-height: 48px;
+      width: 100%;
+    }
+
+    .lb-view-btn {
+      min-height: 44px;
+      padding: 10px 16px;
+    }
+
+    .ach-grid {
+      grid-template-columns: 1fr;
+    }
+  }
 </style>

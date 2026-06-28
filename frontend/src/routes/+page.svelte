@@ -9,18 +9,56 @@
   import AuthModal from '$lib/components/AuthModal.svelte';
   import SidePanel from '$lib/components/SidePanel.svelte';
   import HeroPage from '$lib/components/HeroPage.svelte';
-  import { systems, currentSystemId, loadGalaxyData, showAuth, hasPlayedGame } from '$lib/stores/galaxy';
+  import PostGameSummary from '$lib/components/PostGameSummary.svelte';
+  import OnboardingCoach from '$lib/components/OnboardingCoach.svelte';
+  import WelcomeBackBar from '$lib/components/WelcomeBackBar.svelte';
+  import GalaxyHint from '$lib/components/GalaxyHint.svelte';
+  import KeyboardHelp from '$lib/components/KeyboardHelp.svelte';
+  import GalaxyStatusBar from '$lib/components/GalaxyStatusBar.svelte';
+  import GalaxyToast from '$lib/components/GalaxyToast.svelte';
+  import GalaxyRecenter from '$lib/components/GalaxyRecenter.svelte';
+  import MobileBottomBar from '$lib/components/MobileBottomBar.svelte';
+  import AudioUnlockBanner from '$lib/components/AudioUnlockBanner.svelte';
+  import NetworkHint from '$lib/components/NetworkHint.svelte';
+  import SiteFooter from '$lib/components/SiteFooter.svelte';
+  import { pageTitle } from '$lib/stores/progression';
+  import {
+    systems,
+    currentSystemId,
+    showAuth,
+    recordDailyVisit,
+    cycleSystem,
+    selectedPlanet,
+    showGame,
+  } from '$lib/stores/galaxy';
   import { isAuthenticated, user, logoutUser } from '$lib/stores/auth';
   import { play } from '$lib/audio';
 
   let showDropdown = $state(false);
   let panelOpen = $state(false);
+  let showKeyboardHelp = $state(false);
   let dropdownRef: HTMLDivElement | undefined = $state(undefined);
 
+  let showGalaxyChrome = $derived($isAuthenticated);
+
+  $effect(() => {
+    if (!$isAuthenticated) {
+      panelOpen = false;
+      selectedPlanet.set(null);
+      showGame.set(null);
+    }
+  });
+
+  $effect(() => {
+    const g = $showGame;
+    const p = $selectedPlanet;
+    if (g?.title) pageTitle.set(`${g.title} — Game Galaxy`);
+    else if (p?.title) pageTitle.set(`${p.title} — Game Galaxy`);
+    else pageTitle.set('Game Galaxy');
+  });
+
   onMount(() => {
-    loadGalaxyData().catch(() => {
-      console.warn('[Galaxy] Backend unreachable — running in offline mode');
-    });
+    recordDailyVisit();
   });
 
   function toggleDropdown(e: MouseEvent) {
@@ -51,27 +89,97 @@
     play('select');
     goto('/account');
   }
+
+  function isTypingTarget(target: EventTarget | null): boolean {
+    if (!(target instanceof HTMLElement)) return false;
+    const tag = target.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable;
+  }
+
+  function onGlobalKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape' && showKeyboardHelp) {
+      showKeyboardHelp = false;
+      play('click');
+      return;
+    }
+
+    if (isTypingTarget(e.target)) return;
+
+    if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      showKeyboardHelp = !showKeyboardHelp;
+      play('click');
+      return;
+    }
+
+    if (!showGalaxyChrome) return;
+
+    if ((e.key === 's' || e.key === 'S') && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      panelOpen = !panelOpen;
+      play(panelOpen ? 'pop' : 'click');
+      return;
+    }
+
+    if (e.key === '[') {
+      e.preventDefault();
+      cycleSystem(-1);
+      play('whoosh');
+      return;
+    }
+
+    if (e.key === ']') {
+      e.preventDefault();
+      cycleSystem(1);
+      play('whoosh');
+    }
+  }
 </script>
 
-<svelte:window onclick={closeDropdown} />
+<svelte:head>
+  <title>{$pageTitle}</title>
+  <meta property="og:title" content={$pageTitle} />
+</svelte:head>
+
+<svelte:window onclick={closeDropdown} onkeydown={onGlobalKeydown} />
 
 <div>
   <Scene />
   
-  {#if !$hasPlayedGame && !$isAuthenticated}
-    <div class="hero-blur-overlay" transition:fade={{ duration: 400 }}></div>
-    <HeroPage />
+  {#if !$isAuthenticated}
+    <div class="hero-gate" transition:fade={{ duration: 400 }} aria-hidden="false">
+      <HeroPage />
+    </div>
   {/if}
-  
-  <PlanetPopup />
-  <GameFrame />
 
-  {#if $hasPlayedGame || $isAuthenticated}
+  {#if showGalaxyChrome}
+    <PlanetPopup />
+    <GameFrame />
+    <PostGameSummary />
+    <OnboardingCoach />
+    <GalaxyHint />
+    <GalaxyStatusBar />
+    <GalaxyRecenter />
+  {:else}
+    <GalaxyToast />
+    <NetworkHint />
+  {/if}
+  <AudioUnlockBanner />
+  <KeyboardHelp bind:open={showKeyboardHelp} />
+
+  {#if showGalaxyChrome}
     <div id="ui-overlay" transition:fade={{ duration: 300 }}>
       <div class="title-bar">
         <SystemSelector />
+        <WelcomeBackBar />
 
-        <div class="title-bar-right" role="presentation" onclick={closeDropdown}>
+        <div class="title-bar-right desktop-only" role="presentation" onclick={closeDropdown}>
+          <button
+            class="help-btn"
+            onclick={(e) => { e.stopPropagation(); showKeyboardHelp = !showKeyboardHelp; play('click'); }}
+            title="Keyboard shortcuts (?)"
+            aria-label="Keyboard shortcuts"
+          >?</button>
           <div class="auth-dropdown-container">
             <button
               class="auth-btn"
@@ -110,7 +218,15 @@
   {/if}
 
   <AuthModal />
-  <SidePanel bind:open={panelOpen} />
+  {#if showGalaxyChrome}
+    <SidePanel bind:open={panelOpen} />
+    <MobileBottomBar
+      panelOpen={panelOpen}
+      onTogglePanel={() => { panelOpen = !panelOpen; }}
+      onToggleHelp={() => { showKeyboardHelp = !showKeyboardHelp; }}
+    />
+    <SiteFooter />
+  {/if}
 </div>
 
 <style>
@@ -150,18 +266,45 @@
     position: absolute;
     right: var(--space-lg);
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
     animation: fadeSlideUp 0.4s var(--ease-out) both;
     animation-delay: 0.15s;
   }
 
-  .hero-blur-overlay {
+  .help-btn {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(8, 8, 28, 0.5);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: var(--text-muted);
+    font-size: 15px;
+    font-weight: 700;
+    font-family: 'DM Sans', system-ui, sans-serif;
+    cursor: pointer;
+    transition: color 0.15s var(--ease-out), border-color 0.15s var(--ease-out);
+  }
+
+  .help-btn:hover {
+    color: var(--accent);
+    border-color: rgba(232, 168, 56, 0.3);
+  }
+
+  .hero-gate {
     position: fixed;
     inset: 0;
-    z-index: 4;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    pointer-events: none;
+    z-index: 50;
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .auth-btn {
@@ -294,6 +437,21 @@
   .dropdown-signout:hover {
     background: var(--error-bg);
     color: var(--error);
+  }
+
+  @media (max-width: 640px) {
+    .title-bar {
+      height: auto;
+      min-height: 48px;
+      gap: var(--space-xs);
+      padding: var(--space-sm) var(--space-md);
+      padding-top: max(var(--space-sm), env(safe-area-inset-top, 0px));
+    }
+
+    .title-bar-right {
+      right: var(--space-md);
+      top: max(var(--space-sm), env(safe-area-inset-top, 0px));
+    }
   }
 
   @media (max-width: 480px) {

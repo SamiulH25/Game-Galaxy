@@ -7,8 +7,10 @@
 
   var _responseHandlers = {};
   var _msgId = 0;
+  var _parentOrigin = window.location.origin;
 
   window.addEventListener('message', function(e) {
+    if (e.origin !== _parentOrigin) return;
     var msg = e.data;
     if (!msg || !msg._bridge) return;
 
@@ -30,7 +32,7 @@
         _id: _msgId,
         type: type,
         data: data
-      }, '*');
+      }, _parentOrigin);
       // Timeout after 5s
       setTimeout(function() {
         if (_responseHandlers[_msgId]) {

@@ -1,7 +1,12 @@
-import { c as derived, d as store_get, p as unsubscribe_stores } from "../../../chunks/index-server.js";
+import { c as derived, f as store_get, m as unsubscribe_stores } from "../../../chunks/index-server.js";
+import "../../../chunks/shared2.js";
+import "../../../chunks/index-server2.js";
 import "../../../chunks/audio.js";
+import { F as systems, R as user, b as games } from "../../../chunks/progression.js";
 import "../../../chunks/client.js";
-import { h as systems, l as games, s as user } from "../../../chunks/social.js";
+import "../../../chunks/navigation.js";
+import "../../../chunks/social.js";
+//#endregion
 //#region src/routes/account/+page.svelte
 function _page($$renderer, $$props) {
 	$$renderer.component(($$renderer) => {

@@ -1,17 +1,91 @@
 <script lang="ts">
-  import { selectedPlanet, showGame } from '$lib/stores/galaxy';
+  import { fade, fly } from 'svelte/transition';
+  import { selectedPlanet, showGame, buildShareUrl } from '$lib/stores/galaxy';
+  import { isAuthenticated } from '$lib/stores/auth';
+  import { fetchLeaderboard } from '$lib/api';
+  import { getPersonalBest, getDailyMission, isDailyMissionForGame, isDailyMissionComplete } from '$lib/stores/progression';
+  import { lastPlayedGame } from '$lib/stores/galaxy';
   import { play } from '$lib/audio';
+  import { lockBodyScroll } from '$lib/stores/viewport';
+  import { trapFocus } from '$lib/utils/focusTrap';
+  import { isGameDiscovered } from '$lib/stores/galaxy';
 
   let game = $state<any>(null);
   let visible = $state(false);
   let mounted = $state(false);
+  let lbLoading = $state(false);
+  let lbError = $state(false);
+  let lbEntries = $state<{ rank: number; username: string; score: number | null }[]>([]);
+  let lbTotal = $state(0);
+  let userRank = $state<number | null>(null);
+  let userBest = $state<number | null>(null);
+  let isNewDiscovery = $state(false);
+  let shareChallenge = $state<number | null>(null);
+  let shareCopied = $state(false);
+  let localBest = $state<number | null>(null);
+  let popupDialogEl = $state<HTMLElement | null>(null);
+
+  let discoveryLabel = $derived.by(() => {
+    if (!game?.id) return 'Planet preview';
+    if (isNewDiscovery) return 'New discovery';
+    return isGameDiscovered(game.id) ? 'Discovered' : 'Undiscovered — click in galaxy to chart';
+  });
+
+  let dailyMission = $derived(getDailyMission());
+  let isTodaysMission = $derived(game?.id ? isDailyMissionForGame(game.id) : false);
+  let missionDone = $derived(isDailyMissionComplete());
+
+  const PLAY_TIME: Record<string, string> = {
+    Easy: '5–10 min',
+    Medium: '10–20 min',
+    Hard: '20+ min',
+  };
+
+  function estimatePlayTime(g: any): string {
+    return g?.estimatedTime || PLAY_TIME[g?.difficulty] || '10–15 min';
+  }
+
+  function scoreFromEntry(entry: any): number | null {
+    const raw = entry?.score_data?.score;
+    return typeof raw === 'number' ? raw : null;
+  }
+
+  async function loadLeaderboardPreview(gameId: string) {
+    lbLoading = true;
+    lbEntries = [];
+    lbTotal = 0;
+    userRank = null;
+    userBest = null;
+    lbError = false;
+    try {
+      const data = await fetchLeaderboard(gameId, 'best', 5);
+      lbEntries = (data.entries || []).map((e: any) => ({
+        rank: e.rank,
+        username: e.username,
+        score: scoreFromEntry(e),
+      }));
+      lbTotal = data.total || 0;
+      userRank = data.user_rank ?? null;
+      userBest = scoreFromEntry(data.user_entry);
+    } catch {
+      lbError = true;
+    }
+    lbLoading = false;
+  }
 
   $effect(() => {
     const g = $selectedPlanet;
     if (g) {
       game = g;
       mounted = true;
+      isNewDiscovery = !!(g as { __newDiscovery?: boolean }).__newDiscovery;
+      const challenge = (g as { __shareChallenge?: number }).__shareChallenge;
+      shareChallenge = typeof challenge === 'number' && !Number.isNaN(challenge) ? challenge : null;
+      shareCopied = false;
+      selectedScreenshot = 0;
+      localBest = getPersonalBest(g.id);
       requestAnimationFrame(() => { visible = true; });
+      loadLeaderboardPreview(g.id);
     } else if (mounted) {
       visible = false;
     }
@@ -28,6 +102,16 @@
     }
   });
 
+  $effect(() => {
+    if (!visible) return;
+    return lockBodyScroll();
+  });
+
+  $effect(() => {
+    if (!visible || !popupDialogEl) return;
+    return trapFocus(popupDialogEl);
+  });
+
   let selectedScreenshot = $state<number>(0);
 
   function close() {
@@ -38,9 +122,27 @@
 
   function launch() {
     if (game) {
-      showGame.set({ ...game });
+      const payload = { ...game };
+      if (shareChallenge !== null) payload.__shareChallenge = shareChallenge;
+      const dailyMission = (game as { __dailyMission?: number }).__dailyMission;
+      if (typeof dailyMission === 'number') payload.__dailyMission = dailyMission;
+      showGame.set(payload);
       close();
       play('doorOpen');
+    }
+  }
+
+  async function copyShareLink() {
+    if (!game?.id || typeof window === 'undefined') return;
+    const challenge = userBest ?? shareChallenge;
+    const url = buildShareUrl(game.id, challenge);
+    try {
+      await navigator.clipboard.writeText(url);
+      shareCopied = true;
+      play('chime');
+      setTimeout(() => { shareCopied = false; }, 2200);
+    } catch {
+      play('cancel');
     }
   }
 
@@ -72,9 +174,20 @@
 <svelte:window onkeydown={onKeydown} />
 
 {#if game}
-  <div class="popup-overlay" class:visible role="dialog" aria-modal="true" tabindex="-1" onclick={close} onkeydown={(e) => e.key === 'Escape' && close()}>
+  <div
+    class="popup-overlay"
+    class:visible
+    role="dialog"
+    aria-modal="true"
+    aria-label="{game.title} — {discoveryLabel}"
+    bind:this={popupDialogEl}
+    tabindex="-1"
+    onclick={close}
+    onkeydown={(e) => e.key === 'Escape' && close()}
+  >
     <div class="popup-backdrop" class:visible></div>
     <div class="popup-card" class:visible role="presentation" tabindex="-1" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()}>
+      <div class="sheet-handle" aria-hidden="true"></div>
       <!-- Hero / Thumbnail -->
       <div class="popup-hero" style="--planet-color: {game.planetColor || '#4488ff'}">
         {#if thumbnailUrl(game.id, game.thumbnail)}
@@ -92,17 +205,88 @@
       <!-- Body -->
       <div class="popup-body">
         <div class="popup-header">
+          {#if isNewDiscovery}
+            <span class="discovery-badge" in:fly={{ y: -8, duration: 300 }}>New discovery</span>
+          {/if}
+          {#if shareChallenge !== null}
+            <span class="challenge-badge" in:fly={{ y: -8, duration: 300 }}>
+              Challenge: beat {shareChallenge.toLocaleString()}
+            </span>
+          {/if}
+          {#if isTodaysMission && dailyMission && !missionDone}
+            <span class="daily-badge" in:fly={{ y: -8, duration: 300 }}>
+              Daily mission: score {dailyMission.targetScore.toLocaleString()}+
+            </span>
+          {/if}
           <h2>{game.title}</h2>
-          <div class="popup-badges">
+          {#if lbTotal > 0 && !lbLoading}
+            <p class="social-proof">{lbTotal} pilot{lbTotal === 1 ? '' : 's'} on the board</p>
+          {/if}
+          <p class="how-to-play">{game.description}</p>
+          <div class="popup-quick-stats">
             {#if game.difficulty}
-              <span class="badge badge-difficulty" style="--badge-color: {difficultyColor[game.difficulty] || 'var(--accent)'}">
-                {game.difficulty}
+              <span class="quick-stat">
+                <span class="quick-stat-label">Difficulty</span>
+                <span class="quick-stat-value" style="color: {difficultyColor[game.difficulty] || 'var(--accent)'}">{game.difficulty}</span>
               </span>
             {/if}
+            <span class="quick-stat">
+              <span class="quick-stat-label">Play time</span>
+              <span class="quick-stat-value">{estimatePlayTime(game)}</span>
+            </span>
             {#if game.genre}
-              <span class="badge badge-genre">{game.genre}</span>
+              <span class="quick-stat">
+                <span class="quick-stat-label">Genre</span>
+                <span class="quick-stat-value">{game.genre.split(',')[0].trim()}</span>
+              </span>
             {/if}
           </div>
+        </div>
+
+        {#if $isAuthenticated && userBest !== null}
+          <div class="personal-best">
+            <span class="pb-label">Your best</span>
+            <span class="pb-value">{userBest.toLocaleString()}</span>
+            {#if userRank}
+              <span class="pb-rank">Rank #{userRank}</span>
+            {/if}
+          </div>
+        {:else if localBest !== null}
+          <div class="personal-best guest-best">
+            <span class="pb-label">Local best</span>
+            <span class="pb-value">{localBest.toLocaleString()}</span>
+            <span class="pb-rank">Sign in to sync</span>
+          </div>
+        {/if}
+
+        {#if $lastPlayedGame?.id === game.id}
+          <p class="last-played-hint">Last played {new Date($lastPlayedGame.playedAt).toLocaleDateString()}</p>
+        {/if}
+
+        <div class="leaderboard-preview">
+          <div class="lb-header">
+            <span class="lb-title">Top pilots</span>
+            {#if lbTotal > 0}
+              <span class="lb-count">{lbTotal} entries</span>
+            {/if}
+          </div>
+          {#if lbLoading}
+            <p class="lb-empty">Loading scores…</p>
+          {:else if lbError}
+            <p class="lb-empty lb-offline">Scores offline — sign in and retry when connected.</p>
+          {:else if lbEntries.length > 0}
+            <ol class="lb-list">
+              {#each lbEntries as entry}
+                <li class="lb-row">
+                  <span class="lb-rank">#{entry.rank}</span>
+                  <span class="lb-name">{entry.username}</span>
+                  <span class="lb-score">{entry.score !== null ? entry.score.toLocaleString() : '—'}</span>
+                </li>
+              {/each}
+            </ol>
+          {:else}
+            <p class="lb-empty">Be the first on the board — launch and set a score.</p>
+          {/if}
         </div>
 
         {#if game.tags?.length}
@@ -187,7 +371,10 @@
         <div class="popup-actions">
           <button class="btn btn-primary" onclick={launch}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>
-            Launch Game
+            Launch
+          </button>
+          <button class="btn btn-ghost" onclick={copyShareLink} title="Copy share link">
+            {shareCopied ? 'Copied!' : 'Share'}
           </button>
           <button class="btn btn-ghost" onclick={close}>Close</button>
         </div>
@@ -285,26 +472,216 @@
     display: flex; flex-direction: column; gap: 6px;
     padding-top: var(--space-md);
   }
+
+  .discovery-badge {
+    align-self: flex-start;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--cyan);
+    background: rgba(56, 200, 232, 0.1);
+    border: 1px solid rgba(56, 200, 232, 0.22);
+    padding: 4px 10px;
+    border-radius: 100px;
+    margin-bottom: 2px;
+  }
+
+  .challenge-badge {
+    align-self: flex-start;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    color: var(--accent);
+    background: rgba(232, 168, 56, 0.1);
+    border: 1px solid rgba(232, 168, 56, 0.28);
+    padding: 4px 10px;
+    border-radius: 100px;
+    margin-bottom: 2px;
+  }
+
+  .daily-badge {
+    align-self: flex-start;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--cyan);
+    background: rgba(56, 200, 232, 0.08);
+    border: 1px solid rgba(56, 200, 232, 0.25);
+    padding: 4px 10px;
+    border-radius: 100px;
+    margin-bottom: 2px;
+  }
+
+  .social-proof {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .how-to-play {
+    font-size: var(--fs-xs);
+    color: var(--text-secondary);
+    line-height: 1.45;
+    margin-top: var(--space-xs);
+  }
+
+  .last-played-hint {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-bottom: var(--space-xs);
+  }
+
+  .guest-best .pb-rank {
+    color: var(--cyan);
+  }
+
   h2 {
     font-size: var(--fs-xl); font-weight: 700; color: var(--text);
     letter-spacing: -0.3px; line-height: 1.2;
   }
-  .popup-badges {
-    display: flex; flex-wrap: wrap; gap: 6px;
+
+  .popup-quick-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    padding-top: var(--space-sm);
   }
-  .badge {
-    font-size: 10px; font-weight: 700; letter-spacing: 0.8px;
-    text-transform: uppercase; padding: 3px 10px; border-radius: 20px;
+
+  .quick-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xs);
+    min-width: 72px;
   }
-  .badge-difficulty {
-    background: color-mix(in srgb, var(--badge-color, var(--accent)) 15%, transparent);
-    color: var(--badge-color, var(--accent));
-    border: 1px solid color-mix(in srgb, var(--badge-color, var(--accent)) 25%, transparent);
-  }
-  .badge-genre {
-    background: rgba(255,255,255,0.04);
+
+  .quick-stat-label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
     color: var(--text-muted);
-    border: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .quick-stat-value {
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+
+  .personal-best {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-top: var(--space-md);
+    padding: var(--space-sm) var(--space-md);
+    background: rgba(232, 168, 56, 0.06);
+    border: 1px solid rgba(232, 168, 56, 0.15);
+    border-radius: var(--radius-sm);
+  }
+
+  .pb-label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .pb-value {
+    font-size: var(--fs-md);
+    font-weight: 700;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pb-rank {
+    margin-left: auto;
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+  }
+
+  .leaderboard-preview {
+    margin-top: var(--space-md);
+    padding: var(--space-sm) var(--space-md);
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+  }
+
+  .lb-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-xs);
+  }
+
+  .lb-title {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .lb-count {
+    font-size: 9px;
+    color: var(--text-muted);
+  }
+
+  .lb-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .lb-row {
+    display: grid;
+    grid-template-columns: 32px 1fr auto;
+    align-items: center;
+    gap: 8px;
+    font-size: var(--fs-xs);
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  }
+
+  .lb-row:last-child {
+    border-bottom: none;
+  }
+
+  .lb-rank {
+    font-weight: 700;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .lb-name {
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .lb-score {
+    font-weight: 600;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .lb-empty {
+    font-size: var(--fs-xs);
+    color: var(--text-muted);
+    line-height: 1.5;
+    padding: 4px 0;
+  }
+
+  .lb-offline {
+    color: var(--text-secondary);
+    font-style: italic;
   }
 
   /* Tags */
@@ -425,5 +802,62 @@
     color: var(--text-secondary);
     border-color: var(--border-hover);
     background: rgba(255,255,255,0.02);
+  }
+
+  .sheet-handle {
+    display: none;
+  }
+
+  @media (max-width: 640px) {
+    .popup-overlay {
+      align-items: flex-end;
+      justify-content: stretch;
+      padding: 0;
+    }
+
+    .popup-card {
+      max-width: none;
+      width: 100%;
+      max-height: 94dvh;
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+      border-bottom: none;
+      transform: translateY(100%);
+    }
+
+    .popup-card.visible {
+      transform: translateY(0);
+    }
+
+    .sheet-handle {
+      display: block;
+      width: 40px;
+      height: 4px;
+      margin: 10px auto 0;
+      border-radius: 2px;
+      background: rgba(255, 255, 255, 0.18);
+      flex-shrink: 0;
+    }
+
+    .popup-body {
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    .popup-actions {
+      flex-direction: column;
+      position: sticky;
+      bottom: 0;
+      background: linear-gradient(transparent, var(--surface) 12%);
+      padding-top: var(--space-md);
+      padding-bottom: calc(var(--space-lg) + env(safe-area-inset-bottom, 0px));
+    }
+
+    .btn {
+      min-height: 44px;
+      width: 100%;
+    }
+
+    .btn-primary {
+      order: -1;
+    }
   }
 </style>

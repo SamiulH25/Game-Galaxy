@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Parlor Klondike — Game Galaxy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,700;1,400&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=3">
+  <script src="../bridge.js"></script>
+</head>
+<body>
+  <div id="game-container">
+    <div id="table-felt" class="table-felt" aria-hidden="true"></div>
+
+    <div id="hud-top">
+      <div class="hud-item">
+        <span class="hud-label">Score</span>
+        <span id="hud-score" class="hud-value">0</span>
+      </div>
+      <div class="hud-item">
+        <span class="hud-label">Moves</span>
+        <span id="hud-moves" class="hud-value">0</span>
+      </div>
+      <div class="hud-item">
+        <span class="hud-label">Time</span>
+        <span id="hud-time" class="hud-value">0:00</span>
+      </div>
+      <div class="hud-item hud-mode">
+        <span class="hud-label">Table</span>
+        <span id="hud-mode" class="hud-value">Classic</span>
+      </div>
+    </div>
+
+    <div id="board" class="board hidden" aria-label="Solitaire board">
+      <div class="top-row">
+        <div class="pile stock-pile" data-zone="stock" id="zone-stock" aria-label="Stock"></div>
+        <div class="pile waste-pile" data-zone="waste" id="zone-waste" aria-label="Waste"></div>
+        <div class="foundation-spacer"></div>
+        <div class="pile foundation-pile" data-zone="foundation-0" id="zone-foundation-0" aria-label="Spades foundation"></div>
+        <div class="pile foundation-pile" data-zone="foundation-1" id="zone-foundation-1" aria-label="Hearts foundation"></div>
+        <div class="pile foundation-pile" data-zone="foundation-2" id="zone-foundation-2" aria-label="Clubs foundation"></div>
+        <div class="pile foundation-pile" data-zone="foundation-3" id="zone-foundation-3" aria-label="Diamonds foundation"></div>
+      </div>
+      <div class="tableau-row">
+        <div class="pile tableau-pile" data-zone="tableau-0" id="zone-tableau-0"></div>
+        <div class="pile tableau-pile" data-zone="tableau-1" id="zone-tableau-1"></div>
+        <div class="pile tableau-pile" data-zone="tableau-2" id="zone-tableau-2"></div>
+        <div class="pile tableau-pile" data-zone="tableau-3" id="zone-tableau-3"></div>
+        <div class="pile tableau-pile" data-zone="tableau-4" id="zone-tableau-4"></div>
+        <div class="pile tableau-pile" data-zone="tableau-5" id="zone-tableau-5"></div>
+        <div class="pile tableau-pile" data-zone="tableau-6" id="zone-tableau-6"></div>
+      </div>
+    </div>
+
+    <div id="toolbar" class="toolbar hidden">
+      <button type="button" id="btn-undo" class="tool-btn" title="Undo (U)">Undo</button>
+      <button type="button" id="btn-hint" class="tool-btn" title="Hint (H)">Hint</button>
+      <button type="button" id="btn-auto" class="tool-btn" title="Auto-collect">Collect</button>
+      <button type="button" id="btn-new" class="tool-btn secondary" title="New deal (N)">New deal</button>
+      <button type="button" id="btn-pause" class="tool-btn secondary" title="Pause">Pause</button>
+    </div>
+
+    <div id="hint-toast" class="hint-toast hidden" role="status"></div>
+
+    <div id="overlay" class="overlay">
+      <div class="overlay-panel">
+        <p class="overlay-stamp">Members only · Table 4</p>
+        <h1 class="game-title">Parlor Klondike</h1>
+        <p class="subtitle">Green baize. Cold coffee. One more hand.</p>
+        <div id="overlay-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/config.js?v=3"></script>
+  <script src="js/engine.js?v=3"></script>
+  <script src="js/renderer.js?v=3"></script>
+  <script src="js/audio.js?v=3"></script>
+  <script src="js/main.js?v=3"></script>
+</body>
+</html>
