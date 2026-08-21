@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Last Light — Game Galaxy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Exo+2:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="../bridge.js"></script>
+</head>
+<body>
+<div id="game-container">
+  <canvas id="game-canvas" aria-label="Last Light — lighthouse sea"></canvas>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="hud-score-box">
+      <span class="hud-label">SCORE</span>
+      <span id="hud-score" class="hud-value">0</span>
+      <span id="hud-best" class="hud-best">BEST 0</span>
+    </div>
+    <div id="hud-lanterns" aria-label="Lanterns remaining">
+      <span class="lantern"></span>
+      <span class="lantern"></span>
+      <span class="lantern"></span>
+    </div>
+  </div>
+  <div id="hud-combo" class="hidden">COMBO ×2</div>
+
+  <div id="storm-banner" class="hidden"><span id="storm-text">STORM SURGE</span></div>
+
+  <div id="hint-bar" class="hidden">Sweep the beam across ships — then hold it on the eastern gap</div>
+
+  <!-- Touch controls -->
+  <button type="button" id="btn-pause" aria-label="Pause"><span></span><span></span></button>
+  <button type="button" id="btn-focus" aria-label="Focus beam">FOCUS</button>
+
+  <!-- Overlay -->
+  <div id="overlay">
+    <div class="overlay-content">
+      <div id="overlay-body"></div>
+    </div>
+  </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/renderer.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

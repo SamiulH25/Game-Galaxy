@@ -1,0 +1,98 @@
+{
+  "title": "Last Light",
+  "description": "Keep the lighthouse burning — sweep your beam to guide fog-lost ships past the reef and into harbor.",
+  "detailedDescription": "An atmospheric arcade guiding game. You are the keeper of the last lighthouse above a reef graveyard. Ships drift blind through the fog toward the rocks; only your beam can wake them. Sweep across a ship to rouse it, then lead it with the light and hold the beam on the eastern harbor gap until it commits. Three lanterns, endless night — every wreck snuffs one. Fog banks roll in, storm surges shove the lanes sideways, and lightning reveals what the dark was hiding. Ghost Ships punish curiosity: light them and they drive themselves onto your island.",
+  "planetName": "Beacon Atoll",
+  "solarSystemId": "saltmere",
+  "solarSystemName": "Saltmere Reach",
+  "planetColor": "#0e3a4a",
+  "planetSize": 0.85,
+  "orbitRadius": 13.5,
+  "orbitSpeed": 0.05,
+  "starter": false,
+  "thumbnail": "thumbnail.svg",
+  "screenshots": [],
+  "difficulty": "Medium",
+  "controls": "Mouse aims the beam; hold left button (or SPACE) to focus it. Arrow keys rotate. Touch: drag anywhere to aim (relative), FOCUS button to concentrate the beam. P pauses. Enter advances screens.",
+  "genre": "Arcade, Puzzle",
+  "tags": ["arcade", "puzzle", "atmospheric", "lighthouse", "guidance", "weather", "unique"],
+  "characteristics": {
+    "type": "moons",
+    "moonCount": 1,
+    "moonSize": 0.16,
+    "moonOrbitRadius": 2.1,
+    "moonColor": "#9fb4c4"
+  },
+  "achievements": [
+    {
+      "id": "first_dock",
+      "title": "Harbor Bell",
+      "description": "Dock your first ship",
+      "icon": "star",
+      "hidden": false
+    },
+    {
+      "id": "ten_docks",
+      "title": "Steady Watch",
+      "description": "Dock 10 ships in one night",
+      "icon": "trophy",
+      "hidden": false
+    },
+    {
+      "id": "barge_in",
+      "title": "Heavy Rescue",
+      "description": "Dock an Ember Barge",
+      "icon": "diamond",
+      "hidden": false
+    },
+    {
+      "id": "storm_eye",
+      "title": "Storm Eye",
+      "description": "Survive a storm surge with no wreck",
+      "icon": "bolt",
+      "hidden": false
+    },
+    {
+      "id": "combo_8",
+      "title": "Chain of Light",
+      "description": "Reach combo ×8",
+      "icon": "bolt",
+      "hidden": false
+    },
+    {
+      "id": "ghost_pass",
+      "title": "Look Away",
+      "description": "Let a Ghost Ship pass without ever lighting it",
+      "icon": "moon",
+      "hidden": false
+    },
+    {
+      "id": "sloop_five",
+      "title": "Fast Post",
+      "description": "Dock 5 Messenger Sloops in one night",
+      "icon": "star",
+      "hidden": false
+    },
+    {
+      "id": "clean_fifteen",
+      "title": "Lantern Keeper",
+      "description": "Dock 15 ships before your first wreck",
+      "icon": "trophy",
+      "hidden": false
+    },
+    {
+      "id": "saved_25",
+      "title": "25 Souls",
+      "description": "Dock 25 ships in total",
+      "icon": "diamond",
+      "hidden": false
+    },
+    {
+      "id": "legend_keeper",
+      "title": "Last Light",
+      "description": "Score 5,000 in one night",
+      "icon": "trophy",
+      "hidden": true
+    }
+  ]
+}
