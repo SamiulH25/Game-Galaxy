@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<title>Prism Relay</title>
+		<link rel="stylesheet" href="style.css" />
+		<script src="/sdk/galaxy.js"></script>
+	</head>
+	<body>
+		<!-- Title -->
+		<section id="screen-title" class="screen">
+			<div class="title-card">
+				<div class="logo" aria-hidden="true">
+					<span class="ray r"></span><span class="ray g"></span><span class="ray b"></span>
+				</div>
+				<p class="eyebrow" id="greeting">Violet Veil relay station</p>
+				<h1>Prism Relay</h1>
+				<p class="lede">Bend, split and filter light to wake every receiver on the board.</p>
+				<div class="menu">
+					<button class="btn primary" id="btn-continue" type="button">Continue</button>
+					<button class="btn" id="btn-chapters" type="button">Chapters</button>
+					<button class="btn" id="btn-daily" type="button">Daily relay <span class="tag" id="daily-tag"></span></button>
+				</div>
+				<p class="stars-total"><span class="star-icon">★</span> <span id="stars-total">0</span> / 150 stars</p>
+			</div>
+		</section>
+
+		<!-- Chapters -->
+		<section id="screen-chapters" class="screen hidden">
+			<header class="bar">
+				<button class="icon-btn" id="btn-chapters-back" type="button" aria-label="Back">←</button>
+				<h2>Chapters</h2>
+				<span class="bar-stat"><span class="star-icon">★</span> <span id="chapters-stars">0</span></span>
+			</header>
+			<div class="chapters" id="chapters"></div>
+		</section>
+
+		<!-- Play -->
+		<section id="screen-play" class="screen hidden">
+			<header class="bar">
+				<button class="icon-btn" id="btn-play-back" type="button" aria-label="Back to chapters">←</button>
+				<div class="bar-title">
+					<h2 id="level-title">Level</h2>
+					<p id="level-sub"></p>
+				</div>
+				<div class="bar-actions">
+					<span class="bar-stat" title="Moves (par)"><span id="moves">0</span><span class="par">/<span id="par-moves">0</span></span></span>
+					<button class="icon-btn" id="btn-undo" type="button" aria-label="Undo (Z)" title="Undo (Z)">↶</button>
+					<button class="icon-btn" id="btn-reset" type="button" aria-label="Reset (R)" title="Reset (R)">⟲</button>
+					<button class="icon-btn" id="btn-hint" type="button" aria-label="Hint" title="Hint (limits this solve to one star)">?</button>
+				</div>
+			</header>
+			<div class="board-wrap" id="board-wrap">
+				<canvas id="board" aria-label="Puzzle board"></canvas>
+				<p class="tip hidden" id="tip"></p>
+			</div>
+			<nav class="tray" id="tray" aria-label="Pieces"></nav>
+		</section>
+
+		<!-- Win card -->
+		<div class="modal hidden" id="win" role="dialog" aria-modal="true" aria-labelledby="win-title">
+			<div class="card">
+				<p class="eyebrow">Relay complete</p>
+				<h2 id="win-title">All receivers lit</h2>
+				<div class="win-stars" id="win-stars"></div>
+				<ul class="criteria" id="win-criteria"></ul>
+				<div class="menu row">
+					<button class="btn" id="btn-win-replay" type="button">Replay</button>
+					<button class="btn primary" id="btn-win-next" type="button">Next</button>
+				</div>
+			</div>
+		</div>
+
+		<script src="js/levels.js"></script>
+		<script src="js/game.js"></script>
+	</body>
+</html>

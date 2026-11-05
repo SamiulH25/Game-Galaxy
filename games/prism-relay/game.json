@@ -1,0 +1,36 @@
+{
+	"$schema": "../../schemas/game.schema.json",
+	"title": "Prism Relay",
+	"tagline": "Bend, split and filter light to wake every receiver.",
+	"description": "A light-routing puzzle campaign. Place mirrors, splitters and colour filters to guide coloured beams into receivers that each want an exact colour — sometimes a mix of two. Fifty levels across five chapters introduce reflection, colour mixing, beam splitting and white-light filtering, plus a fresh daily relay every day.\n\nEvery puzzle has a par: solve it with as few pieces and moves as possible to earn all three stars.",
+	"system": "veil",
+	"genres": ["puzzle", "logic"],
+	"controls": "Tap a cell to place the selected piece; tap again to turn it. Drag to move, drag off the board or long-press to remove. Keyboard: arrows, Enter, Delete, 1–5, Z undo, R reset.",
+	"cover": "cover.svg",
+	"order": 1,
+	"planet": {
+		"name": "Refractis",
+		"kind": "ice",
+		"color": "#b9a7ff",
+		"accent": "#ff7ad9",
+		"size": 1.15,
+		"rings": { "color": "#e4d6ff", "tilt": 0.35 },
+		"moons": 1,
+		"atmosphere": "#c58bff"
+	},
+	"scoring": { "label": "Stars", "order": "desc" },
+	"achievements": [
+		{ "id": "first-light", "title": "First Light", "description": "Complete your first relay.", "icon": "star" },
+		{ "id": "chapter-1", "title": "Reflection", "description": "Solve every level in chapter 1.", "icon": "compass" },
+		{ "id": "chapter-2", "title": "Convergence", "description": "Solve every level in chapter 2.", "icon": "target" },
+		{ "id": "chapter-3", "title": "Division", "description": "Solve every level in chapter 3.", "icon": "bolt" },
+		{ "id": "chapter-4", "title": "Spectrum", "description": "Solve every level in chapter 4.", "icon": "diamond" },
+		{ "id": "chapter-5", "title": "Lattice", "description": "Solve every level in chapter 5.", "icon": "crown" },
+		{ "id": "white-light", "title": "White Light", "description": "Light a receiver that wants every colour at once.", "icon": "moon" },
+		{ "id": "perfect-ten", "title": "Perfect Ten", "description": "Earn three stars on ten levels.", "icon": "trophy" },
+		{ "id": "daily-relay", "title": "Daily Relay", "description": "Solve a daily relay.", "icon": "rocket" },
+		{ "id": "streak-3", "title": "Steady Signal", "description": "Solve the daily relay three days in a row.", "icon": "flame" },
+		{ "id": "lean", "title": "Less Is More", "description": "Solve a level with fewer pieces than par.", "icon": "heart", "secret": true },
+		{ "id": "prismatic", "title": "Prismatic", "description": "Earn all 150 stars.", "icon": "crown", "secret": true }
+	]
+}
