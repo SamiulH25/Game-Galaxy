@@ -1,0 +1,37 @@
+{
+	"$schema": "../../schemas/game.schema.json",
+	"title": "Deepcore",
+	"tagline": "A turn-based descent through a sinking mining station.",
+	"description": "A derelict deep-core mining station is sliding into a gas giant, and its systems have turned hostile. Dive ten procedurally generated decks, scavenge weapons, armor and gadgets, and fight crawlers, drones, sentries, leeches, hulks, swarmers and phasing wraiths — then face the Core Warden and light the escape beacon.\n\nEverything is turn-based and permanent: level up, choose upgrades, trade scrap at fabricators, and see how deep you can get. A shared daily dive gives everyone the same station each day.",
+	"system": "halcyon",
+	"genres": ["roguelike", "strategy", "adventure"],
+	"controls": "Tap a tile to walk there, tap an adjacent enemy to attack. Keyboard: arrows/WASD/numpad/hjklyubn to move and attack, Space or . to wait, > to descend, 1–6 items, F fire, Tab/Enter to target, Esc cancel.",
+	"cover": "cover.svg",
+	"order": 1,
+	"planet": {
+		"name": "Halcyon Deep",
+		"kind": "gas",
+		"color": "#3d5f8f",
+		"accent": "#9fd8ff",
+		"size": 1.9,
+		"rings": { "color": "#c9d9ee", "tilt": -0.25 },
+		"moons": 2,
+		"atmosphere": "#7fc8ff"
+	},
+	"scoring": { "label": "Score", "order": "desc" },
+	"achievements": [
+		{ "id": "first-blood", "title": "First Contact", "description": "Destroy your first hostile.", "icon": "target" },
+		{ "id": "deck-5", "title": "Halfway Down", "description": "Reach deck 5.", "icon": "compass" },
+		{ "id": "warden", "title": "Warden Down", "description": "Destroy the Core Warden.", "icon": "shield" },
+		{ "id": "core", "title": "Beacon Lit", "description": "Reach the Core and escape.", "icon": "crown" },
+		{ "id": "level-8", "title": "Veteran Diver", "description": "Reach level 8 in one dive.", "icon": "star" },
+		{ "id": "grenadier", "title": "Grenadier", "description": "Destroy three hostiles with one grenade.", "icon": "flame" },
+		{ "id": "hulk-slayer", "title": "Giant Killer", "description": "Destroy a Hulk.", "icon": "bolt" },
+		{ "id": "marksman", "title": "Marksman", "description": "Destroy 20 hostiles with the Arc Pistol in one dive.", "icon": "target" },
+		{ "id": "scavenger", "title": "Pack Rat", "description": "Hold 200 scrap.", "icon": "diamond" },
+		{ "id": "daily-dive", "title": "Daily Diver", "description": "Finish a daily dive.", "icon": "rocket" },
+		{ "id": "clean-deck", "title": "Untouched", "description": "Clear a deck from 3 onward without taking damage.", "icon": "heart", "secret": true },
+		{ "id": "ghost", "title": "Ghost", "description": "Descend three decks in a row without destroying anything.", "icon": "moon", "secret": true },
+		{ "id": "no-meds", "title": "Iron Lungs", "description": "Reach the Core without using a medkit.", "icon": "trophy", "secret": true }
+	]
+}

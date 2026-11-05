@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<title>Deepcore</title>
+		<link rel="stylesheet" href="style.css" />
+		<script src="/sdk/galaxy.js"></script>
+	</head>
+	<body>
+		<section id="screen-title" class="screen title">
+			<div class="title-card">
+				<div class="shaft" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+				<p class="eyebrow" id="greeting">Halcyon Deep salvage guild</p>
+				<h1>Deepcore</h1>
+				<p class="lede">A derelict mining station is sinking into a gas giant. Dive ten decks, scavenge what you can, and light the Core's escape beacon.</p>
+				<div class="menu">
+					<button class="btn primary hidden" id="btn-resume" type="button">Resume dive</button>
+					<button class="btn" id="btn-new" type="button">New dive</button>
+					<button class="btn" id="btn-daily" type="button">Daily dive</button>
+				</div>
+				<p class="meta" id="meta"></p>
+				<details class="howto">
+					<summary>How to play</summary>
+					<ul>
+						<li>Everything is turn-based: enemies act only after you do.</li>
+						<li><b>Move</b>: tap a tile, or arrows / WASD / numpad / hjklyubn (diagonals). Bump an enemy to attack.</li>
+						<li><b>Wait</b>: tap yourself, Space or <kbd>.</kbd> · <b>Descend</b>: stand on the lift and press <kbd>&gt;</kbd>.</li>
+						<li><b>Items</b>: 1–6 or the bar below. Grenades and blinks ask for a target.</li>
+						<li><b>Arc Pistol</b>: press F (or Fire) to shoot; it needs energy cells.</li>
+						<li>Fabricators (amber terminals) trade scrap for supplies. Level-ups grant upgrades.</li>
+					</ul>
+				</details>
+			</div>
+		</section>
+
+		<section id="screen-play" class="screen hidden">
+			<header class="hud">
+				<button class="icon-btn" id="btn-menu" type="button" aria-label="Menu">☰</button>
+				<div class="hp">
+					<div class="hp-top"><span>HP</span><span id="hp-text"></span></div>
+					<div class="bar"><span id="hp-bar"></span></div>
+				</div>
+				<div class="lvl">
+					<div class="hp-top"><span id="lvl"></span></div>
+					<div class="bar xp"><span id="xp-bar"></span></div>
+				</div>
+				<span class="chip" id="depth"></span>
+				<span class="chip scrap" title="Scrap">⚙ <span id="scrap"></span></span>
+				<span class="gear" id="gear"></span>
+			</header>
+			<div class="viewport">
+				<canvas id="view" aria-label="Station deck"></canvas>
+				<div class="log" id="log" aria-live="polite"></div>
+				<p class="prompt hidden" id="prompt"></p>
+			</div>
+			<footer class="bar-bottom">
+				<div class="inventory" id="inventory"></div>
+				<div class="actions">
+					<button class="btn small" id="btn-wait" type="button" title="Wait a turn (Space)">Wait</button>
+					<button class="btn small hidden" id="btn-fire" type="button" title="Fire sidearm (F)">Fire</button>
+					<button class="btn small primary hidden" id="btn-down" type="button" title="Descend (&gt;)">Descend</button>
+				</div>
+			</footer>
+		</section>
+
+		<div class="modal hidden" id="modal" role="dialog" aria-modal="true"><div class="modal-card" id="modal-body"></div></div>
+
+		<script src="js/dungeon.js"></script>
+		<script src="js/game.js"></script>
+	</body>
+</html>
