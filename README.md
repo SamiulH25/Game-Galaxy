@@ -10,6 +10,18 @@ A 3D galaxy of browser games. Fly between star systems, pick a planet, and play.
 
 Built with SvelteKit 2 (Svelte 5), TypeScript, Three.js, SQLite (better-sqlite3 + Drizzle) and Zod. It runs as a single Node process.
 
+## The games
+
+| Game | System | What it is |
+| --- | --- | --- |
+| **Slingshot** | Aurora Drift | Gravity-assist physics. 32 levels verified by simulation, plus an endless Survey mode. |
+| **Starward** | Ember Verge | Roguelite deckbuilder: 3 sectors, 35 cards, 16 modules, bosses and 5 Threat levels. |
+| **Bastion Ring** | Ember Verge | Tower defense: 4 maps, 6 towers with specialisations, 25-wave campaigns and Endless. |
+| **Prism Relay** | Violet Veil | Light-routing puzzles: 50 levels across 5 chapters, plus a daily relay. |
+| **Deepcore** | Halcyon Deep | Turn-based roguelike: 10 procedural decks, 8 enemy types, perks, a boss and a daily dive. |
+
+All five are original, written as plain scripts with no build step, and use the Galaxy SDK for saves, leaderboards and 12–13 achievements each.
+
 ## Quick start
 
 Requires Node.js 20.19+ (22 LTS recommended).
