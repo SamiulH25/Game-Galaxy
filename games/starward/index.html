@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<title>Starward</title>
+		<link rel="stylesheet" href="style.css" />
+		<script src="/sdk/galaxy.js"></script>
+	</head>
+	<body>
+		<!-- Title -->
+		<section id="screen-title" class="screen title">
+			<div class="title-card">
+				<div class="emblem" aria-hidden="true"></div>
+				<p class="eyebrow" id="greeting">Ember Verge courier service</p>
+				<h1>Starward</h1>
+				<p class="lede">Carry the beacon core across three hostile sectors. Build your deck, outfit your ship, and survive the Eclipse.</p>
+				<div class="menu">
+					<button class="btn primary" id="btn-continue" type="button">Continue run</button>
+					<button class="btn" id="btn-new" type="button">New run</button>
+				</div>
+				<div class="threat" id="threat-pick" role="radiogroup" aria-label="Threat level"></div>
+				<p class="meta" id="title-meta"></p>
+				<details class="howto">
+					<summary>How to play</summary>
+					<ul>
+						<li>Pick a path across each sector map: battles, elites, events, shops and repair docks.</li>
+						<li>Each turn you get <b>3 Energy</b> and draw 5 cards. Play cards, then end your turn.</li>
+						<li>Enemies show their <b>intent</b> — plan Shield against incoming attacks.</li>
+						<li>Shield resets each turn. Win fights to add cards and modules to your ship.</li>
+						<li>Beat a run to unlock higher <b>Threat</b> levels for bigger scores.</li>
+					</ul>
+				</details>
+			</div>
+		</section>
+
+		<!-- Map -->
+		<section id="screen-map" class="screen hidden">
+			<header class="runbar" data-runbar></header>
+			<div class="map-scroll" id="map-scroll">
+				<div class="map" id="map"></div>
+			</div>
+		</section>
+
+		<!-- Combat -->
+		<section id="screen-combat" class="screen hidden">
+			<header class="runbar" data-runbar></header>
+			<div class="arena">
+				<div class="enemies" id="enemies"></div>
+				<div class="player" id="player"></div>
+			</div>
+			<div class="table">
+				<div class="pile" id="pile-draw" title="Draw pile"></div>
+				<div class="energy" id="energy" aria-live="polite"></div>
+				<div class="hand" id="hand"></div>
+				<div class="pile" id="pile-discard" title="Discard pile"></div>
+				<button class="btn primary end-turn" id="btn-end" type="button">End turn</button>
+			</div>
+			<p class="prompt hidden" id="prompt"></p>
+		</section>
+
+		<div class="modal hidden" id="modal" role="dialog" aria-modal="true">
+			<div class="modal-card" id="modal-body"></div>
+		</div>
+		<div class="fx-layer" id="fx"></div>
+
+		<script src="js/data.js"></script>
+		<script src="js/engine.js"></script>
+		<script src="js/ui.js"></script>
+	</body>
+</html>
