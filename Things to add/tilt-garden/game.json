@@ -1,8 +1,0 @@
-{
-  "id": "tilt-garden",
-  "title": "Tilt Garden",
-  "description": "Tilt a wooden garden tray to roll a marble through ink-and-paper gardens, collecting lotus seeds and finding your way to the koi pond.",
-  "thumbnail": "thumbnail.svg",
-  "entry": "index.html",
-  "tags": ["puzzle", "physics", "casual", "hosted"]
-}

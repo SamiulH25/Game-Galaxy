@@ -1,19 +1,29 @@
 {
-  "alpha-centauri": {
-    "starColor": "#ffcc44",
-    "starEmissive": "#ff8800",
-    "starSize": 2.0,
-    "glowColor": "#ffaa22",
-    "glowIntensity": 0.8,
-    "ambientColor": "#1a1a30"
-  },
-  "saltmere": {
-    "name": "Saltmere Reach",
-    "starColor": "#cfe3ff",
-    "starEmissive": "#aebfd8",
-    "glowColor": "#9fc4e8",
-    "ambientColor": "#101a2e",
-    "glowIntensity": 0.9,
-    "starSize": 2.1
-  }
+	"$schema": "../schemas/systems.schema.json",
+	"systems": [
+		{
+			"id": "aurora",
+			"name": "Aurora Drift",
+			"description": "A cold blue giant ringed by ice worlds. Quick, sharp games live here.",
+			"star": { "color": "#8fc8ff", "size": 1.3 }
+		},
+		{
+			"id": "ember",
+			"name": "Ember Verge",
+			"description": "A warm amber sun with slow, generous orbits. Cozy and strategic games.",
+			"star": { "color": "#ffb347", "size": 1.1 }
+		},
+		{
+			"id": "veil",
+			"name": "Violet Veil",
+			"description": "A magenta dwarf wrapped in nebula haze. Puzzles and strange experiments.",
+			"star": { "color": "#e07bff", "size": 0.8 }
+		},
+		{
+			"id": "halcyon",
+			"name": "Halcyon Deep",
+			"description": "A pale gold binary at the galaxy's edge. Long-form adventures.",
+			"star": { "color": "#fff1c1", "size": 1.6 }
+		}
+	]
 }

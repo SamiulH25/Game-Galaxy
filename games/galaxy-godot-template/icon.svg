@@ -1,6 +1,0 @@
-<svg width="128" height="128" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="64" cy="64" r="60" fill="#1a1a2e" stroke="#44dd88" stroke-width="4"/>
-  <path d="M64 24 Q96 48 80 80 Q64 96 48 80 Q32 48 64 24" fill="#44dd88" opacity="0.8"/>
-  <circle cx="64" cy="40" r="4" fill="#ffffff"/>
-  <text x="64" y="110" text-anchor="middle" fill="#44dd88" font-family="monospace" font-size="12">GALAXY</text>
-</svg>
