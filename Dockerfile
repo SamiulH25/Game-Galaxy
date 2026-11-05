@@ -1,35 +1,26 @@
-# ── Stage 1: build SvelteKit frontend ─────────────────────────────────────────
-FROM node:20-bookworm-slim AS frontend-build
-WORKDIR /app/frontend
-COPY frontend/package.json frontend/package-lock.json* ./
-RUN npm ci 2>/dev/null || npm install
-COPY frontend/ ./
-RUN npm run build
-
-# ── Stage 2: Python API + static hosting ──────────────────────────────────────
-FROM python:3.12-slim-bookworm
+# ── Build ──────────────────────────────────────────────────────────────
+FROM node:22-bookworm-slim AS build
 WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+RUN npm run build && npm prune --omit=dev
 
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY backend/requirements.txt /app/backend/requirements.txt
-RUN pip install --no-cache-dir -r /app/backend/requirements.txt
-
-COPY backend/ /app/backend/
-COPY games/ /app/games/
-COPY --from=frontend-build /app/frontend/build /app/frontend/build
-
-ENV DATABASE_URL=sqlite+aiosqlite:////app/data/game_galaxy.db \
-    GAMES_DIR=/app/games \
-    HOST=0.0.0.0 \
-    PORT=4321 \
-    DEBUG=false
-
-RUN mkdir -p /app/data && chmod +x /app/backend/docker-entrypoint.sh
-
-VOLUME ["/app/data"]
-EXPOSE 4321
-
-WORKDIR /app/backend
-ENTRYPOINT ["/app/backend/docker-entrypoint.sh"]
+# ── Run ────────────────────────────────────────────────────────────────
+FROM node:22-bookworm-slim
+WORKDIR /app
+ENV NODE_ENV=production \
+    PORT=3000 \
+    DATABASE_PATH=/data/galaxy.db \
+    GAMES_DIR=/app/games
+COPY --from=build /app/package.json ./
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/build ./build
+COPY --from=build /app/drizzle ./drizzle
+COPY --from=build /app/games ./games
+RUN mkdir -p /data && chown node:node /data
+USER node
+VOLUME /data
+EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=5s CMD node -e "fetch('http://127.0.0.1:'+process.env.PORT+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+CMD ["node", "build"]

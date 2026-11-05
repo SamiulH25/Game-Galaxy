@@ -1,144 +1,62 @@
 #!/usr/bin/env node
-/**
- * Scaffold a new game from games/000-template-game and register it with the host.
- *
- * Usage:
- *   npm run new-game -- my-cool-game
- *   npm run new-game -- my-cool-game --title "My Cool Game"
- *   npm run new-game -- my-cool-game --no-rescan
- */
-import {
-  cpSync,
-  existsSync,
-  readdirSync,
-  readFileSync,
-  writeFileSync,
-} from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
-import { spawnSync } from 'child_process';
+// Scaffold a new game folder from templates/game.
+//   npm run new-game -- <id> [--title "My Game"] [--system <system-id>]
+import fs from 'node:fs';
+import path from 'node:path';
 
-const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const gamesDir = join(root, 'games');
-const templateDir = join(gamesDir, '000-template-game');
+const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const args = process.argv.slice(2);
+const flag = (name) => {
+	const i = args.indexOf(`--${name}`);
+	if (i === -1) return undefined;
+	const value = args[i + 1];
+	args.splice(i, 2);
+	return value;
+};
 
-function readEnvValue(key) {
-  const envPath = join(root, 'backend', '.env');
-  if (!existsSync(envPath)) return '';
-  const match = readFileSync(envPath, 'utf8').match(new RegExp(`^${key}=(.*)$`, 'm'));
-  return match ? match[1].trim() : '';
+const title = flag('title');
+const systemArg = flag('system');
+const id = args[0];
+
+function fail(message) {
+	console.error(`\n  ✖ ${message}\n\n  Usage: npm run new-game -- <id> [--title "My Game"] [--system <system-id>]\n`);
+	process.exit(1);
 }
 
-function usage() {
-  console.log(`Usage: npm run new-game -- <slug> [options]
+if (!id) fail('Missing game id.');
+if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(id)) fail(`"${id}" is not a valid id: use lowercase letters, digits and dashes.`);
 
-Options:
-  --title <name>     Display title (default: Title Case from slug)
-  --system <id>      solarSystemId (default: alpha-centauri)
-  --url <base>       Server URL for rescan (default: localhost:PORT)
-  --no-rescan        Skip POST /api/games/rescan
+const gamesDir = path.resolve(process.env.GAMES_DIR || path.join(root, 'games'));
+const target = path.join(gamesDir, id);
+if (fs.existsSync(target)) fail(`${path.relative(root, target)} already exists.`);
 
-Example:
-  npm run new-game -- asteroid-rush --title "Asteroid Rush"
-`);
-  process.exit(1);
+let systems = [];
+try {
+	systems = JSON.parse(fs.readFileSync(path.join(gamesDir, 'systems.json'), 'utf8')).systems ?? [];
+} catch {
+	fail(`Could not read ${path.join(gamesDir, 'systems.json')}.`);
 }
+const system = systemArg ?? systems[0]?.id;
+if (!systems.some((s) => s.id === system)) fail(`Unknown system "${system}". Known: ${systems.map((s) => s.id).join(', ')}`);
 
-function argValue(flag) {
-  const i = process.argv.indexOf(flag);
-  return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : '';
+const niceTitle =
+	title ??
+	id
+		.split('-')
+		.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+		.join(' ');
+
+fs.cpSync(path.join(root, 'templates', 'game'), target, { recursive: true });
+for (const file of ['game.json', 'index.html']) {
+	const p = path.join(target, file);
+	const text = fs
+		.readFileSync(p, 'utf8')
+		.replaceAll('__TITLE__', file === 'game.json' ? JSON.stringify(niceTitle).slice(1, -1) : niceTitle.replace(/[<&>]/g, ''))
+		.replaceAll('__SYSTEM__', system);
+	fs.writeFileSync(p, text);
 }
+// The template points at ../../schemas from templates/game; from games/<id> it is the same depth.
 
-function slugify(input) {
-  return String(input)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
-
-function titleCase(slug) {
-  return slug
-    .split('-')
-    .filter(Boolean)
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ');
-}
-
-function nextGameNumber() {
-  let max = -1;
-  for (const name of readdirSync(gamesDir, { withFileTypes: true })) {
-    if (!name.isDirectory()) continue;
-    const m = name.name.match(/^(\d{3})-/);
-    if (m) max = Math.max(max, parseInt(m[1], 10));
-  }
-  return String(max + 1).padStart(3, '0');
-}
-
-const positional = process.argv.slice(2).filter((a) => !a.startsWith('--'));
-const slugRaw = positional[0];
-if (!slugRaw) usage();
-
-const slug = slugify(slugRaw);
-if (!slug) {
-  console.error('[new-game] Invalid slug');
-  usage();
-}
-
-const noRescan = process.argv.includes('--no-rescan');
-const title = argValue('--title') || titleCase(slug);
-const solarSystemId = argValue('--system') || 'alpha-centauri';
-const gameId = `${nextGameNumber()}-${slug}`;
-const dest = join(gamesDir, gameId);
-
-if (!existsSync(templateDir)) {
-  console.error(`[new-game] Template missing: ${templateDir}`);
-  process.exit(1);
-}
-
-if (existsSync(dest)) {
-  console.error(`[new-game] Already exists: ${dest}`);
-  process.exit(1);
-}
-
-console.log(`[new-game] Creating ${gameId} …`);
-cpSync(templateDir, dest, { recursive: true });
-
-const manifestPath = join(dest, 'manifest.json');
-const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-manifest.id = gameId;
-manifest.title = title;
-manifest.planetName = `${title} Station`;
-manifest.description = `Work in progress — ${title}`;
-manifest.detailedDescription = manifest.description;
-manifest.starter = false;
-manifest.tags = ['wip'];
-delete manifest.genre;
-writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf8');
-
-const indexPath = join(dest, 'index.html');
-if (existsSync(indexPath)) {
-  let html = readFileSync(indexPath, 'utf8');
-  html = html.replace(/<title>[^<]*<\/title>/, `<title>${title} — Game Galaxy</title>`);
-  writeFileSync(indexPath, html, 'utf8');
-}
-
-const port = readEnvValue('PORT') || '4321';
-const baseUrl = (argValue('--url') || process.env.GAME_GALAXY_URL || `http://localhost:${port}`).replace(
-  /\/$/,
-  ''
-);
-
-console.log(`[new-game] Folder: games/${gameId}/`);
-console.log(`[new-game] Play now: ${baseUrl}/games/${gameId}/index.html`);
-
-if (!noRescan) {
-  const rescan = spawnSync(process.execPath, [join(root, 'scripts', 'games-rescan.mjs'), '--url', baseUrl], {
-    stdio: 'inherit',
-    cwd: root,
-  });
-  if (rescan.status !== 0) {
-    console.log('[new-game] Rescan failed — restart the server or run: npm run games:rescan');
-  }
-}
-
-console.log('[new-game] Edit manifest.json, then refresh the galaxy (auto within ~15s if GAMES_WATCH=true).');
+console.log(`\n  ✔ Created ${path.relative(root, target)}/ in system "${system}".`);
+console.log(`    It appears in the galaxy within a few seconds (no restart needed).`);
+console.log(`    Edit game.json for the title, planet look, scoring and achievements.\n`);

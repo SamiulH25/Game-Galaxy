@@ -1,1 +1,0 @@
-import{tt as e}from"./hDj-oAFh.js";import"./D1XvVewT.js";import{d as t,n}from"./mVxBivFU.js";function r(){return typeof navigator>`u`||!navigator.vibrate||!e(t).hapticsEnabled?!1:e(n)}function i(){r()&&navigator.vibrate([20,40,25])}function a(){i()}export{a as hapticDiscovery,i as hapticSuccess};

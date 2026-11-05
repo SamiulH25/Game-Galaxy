@@ -1,8 +1,0 @@
-{
-  "id": "paper-drift",
-  "title": "Paper Drift",
-  "description": "Fold an origami boat down a watercolor river — dodge ink, dry in sunbeams, and survive the current.",
-  "thumbnail": "thumbnail.svg",
-  "entry": "index.html",
-  "tags": ["arcade", "casual", "hosted"]
-}

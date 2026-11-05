@@ -1,0 +1,20 @@
+{
+	"$schema": "../../schemas/game.schema.json",
+	"title": "__TITLE__",
+	"tagline": "Tap the pulses before they fade.",
+	"description": "A 30-second reflex game and the starter template for new Game Galaxy games. It shows the whole SDK: loading and saving progress, submitting a score and unlocking achievements.",
+	"system": "__SYSTEM__",
+	"genres": ["arcade", "reflex"],
+	"controls": "Click or tap the glowing pulses. P or Esc pauses.",
+	"cover": "cover.svg",
+	"planet": {
+		"kind": "ice",
+		"moons": 1
+	},
+	"scoring": { "label": "Pulses", "order": "desc" },
+	"achievements": [
+		{ "id": "first-run", "title": "Warm Up", "description": "Finish your first run.", "icon": "rocket" },
+		{ "id": "pulse-25", "title": "Quick Hands", "description": "Catch 25 pulses in one run.", "icon": "bolt" },
+		{ "id": "pulse-40", "title": "Flawless Signal", "description": "Catch 40 pulses in one run.", "icon": "crown", "secret": true }
+	]
+}

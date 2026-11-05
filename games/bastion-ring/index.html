@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<title>Bastion Ring</title>
+		<link rel="stylesheet" href="style.css" />
+		<script src="/sdk/galaxy.js"></script>
+	</head>
+	<body>
+		<section id="screen-maps" class="screen maps-screen">
+			<header class="maps-head">
+				<p class="eyebrow" id="greeting">Ember Verge defence command</p>
+				<h1>Bastion Ring</h1>
+				<p class="lede">Hold the orbital ring against endless Cinder swarms. Build, upgrade and specialise six tower types across four stations.</p>
+				<p class="meta" id="maps-meta"></p>
+				<button class="btn primary hidden" id="btn-resume" type="button">Resume</button>
+			</header>
+			<div class="maps" id="maps"></div>
+		</section>
+
+		<section id="screen-play" class="screen hidden">
+			<header class="top">
+				<button class="btn small" id="btn-quit" type="button">Maps</button>
+				<span class="stat" id="stat-wave"></span>
+				<span class="stat lives" id="stat-lives"></span>
+				<span class="stat credits" id="stat-credits"></span>
+				<div class="preview" id="wave-preview" aria-label="Next wave"></div>
+				<div class="controls">
+					<button class="seg" type="button" id="btn-pause" aria-label="Pause (Space)" title="Pause (Space)">❚❚</button>
+					<button class="seg" type="button" data-speed="1" aria-label="Normal speed">1×</button>
+					<button class="seg" type="button" data-speed="2" aria-label="Double speed">2×</button>
+					<button class="seg" type="button" data-speed="3" aria-label="Triple speed">3×</button>
+					<button class="seg" type="button" id="btn-auto" title="Start the next wave automatically">Auto</button>
+				</div>
+				<button class="btn primary small" id="btn-wave" type="button">Start wave 1</button>
+			</header>
+			<div class="main">
+				<div class="field"><canvas id="board" aria-label="Defence grid"></canvas><div class="banner hidden" id="banner" aria-live="polite"></div></div>
+				<aside class="side">
+					<div class="shop" id="shop" aria-label="Towers"></div>
+					<div class="panel" id="panel"></div>
+				</aside>
+			</div>
+		</section>
+
+		<div class="modal hidden" id="end" role="dialog" aria-modal="true" aria-labelledby="end-title">
+			<div class="card">
+				<p class="eyebrow" id="end-eyebrow"></p>
+				<h2 id="end-title"></h2>
+				<div class="end-stars" id="end-stars"></div>
+				<dl class="stats" id="end-stats"></dl>
+				<div class="row">
+					<button class="btn" type="button" id="btn-end-maps">Maps</button>
+					<button class="btn primary" type="button" id="btn-end-again">Play again</button>
+				</div>
+			</div>
+		</div>
+
+		<script src="js/sim.js"></script>
+		<script src="js/game.js"></script>
+	</body>
+</html>

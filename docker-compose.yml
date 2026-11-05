@@ -1,29 +1,15 @@
 services:
-  game-galaxy:
+  galaxy:
     build: .
     ports:
-      - "${PORT:-4321}:4321"
+      - '3000:3000'
     environment:
-      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
-      DATABASE_URL: sqlite+aiosqlite:////app/data/game_galaxy.db
-      HOST: 0.0.0.0
-      PORT: 4321
-      GAMES_DIR: /app/games
-      DEBUG: "${DEBUG:-false}"
-      GAMES_WATCH: "${GAMES_WATCH:-true}"
-      GAMES_LIVE_RELOAD: "${GAMES_LIVE_RELOAD:-true}"
-      GAMES_RESCAN_TOKEN: ${GAMES_RESCAN_TOKEN:-}
+      # The public URL players use. Required for sign-in forms to pass the CSRF check.
+      ORIGIN: ${ORIGIN:-http://localhost:3000}
     volumes:
-      - game-galaxy-data:/app/data
-      # Live games from host — add folders under ./games without rebuilding the image
-      - ./games:/app/games
+      - galaxy-data:/data # SQLite database (accounts, saves, scores)
+      - ./games:/app/games # games are read live from disk: add or edit without rebuilding
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:4321/api/health')"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
 
 volumes:
-  game-galaxy-data:
+  galaxy-data:

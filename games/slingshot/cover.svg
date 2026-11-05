@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360">
+	<defs>
+		<radialGradient id="bg" cx="70%" cy="15%" r="95%">
+			<stop offset="0" stop-color="#103064" />
+			<stop offset="0.55" stop-color="#05102a" />
+			<stop offset="1" stop-color="#01040c" />
+		</radialGradient>
+		<radialGradient id="pl" cx="35%" cy="30%" r="75%">
+			<stop offset="0" stop-color="#bfe9ff" />
+			<stop offset="0.55" stop-color="#2f7ac4" />
+			<stop offset="1" stop-color="#071a33" />
+		</radialGradient>
+		<radialGradient id="pl2" cx="35%" cy="30%" r="75%">
+			<stop offset="0" stop-color="#ffd9b0" />
+			<stop offset="0.55" stop-color="#c46a2f" />
+			<stop offset="1" stop-color="#2a1006" />
+		</radialGradient>
+		<radialGradient id="halo"><stop offset="0.6" stop-color="#7cd4ff" stop-opacity="0.35" /><stop offset="1" stop-color="#7cd4ff" stop-opacity="0" /></radialGradient>
+		<filter id="g"><feGaussianBlur stdDeviation="3" /></filter>
+	</defs>
+	<rect width="640" height="360" fill="url(#bg)" />
+	<g fill="#fff" opacity="0.7">
+		<circle cx="40" cy="40" r="1" /><circle cx="120" cy="300" r="1.2" /><circle cx="220" cy="60" r="0.8" /><circle cx="560" cy="320" r="1" /><circle cx="600" cy="90" r="1.3" /><circle cx="400" cy="30" r="0.9" /><circle cx="470" cy="250" r="0.8" /><circle cx="300" cy="330" r="1" />
+	</g>
+	<circle cx="330" cy="190" r="110" fill="url(#halo)" />
+	<circle cx="330" cy="190" r="70" fill="url(#pl)" />
+	<circle cx="470" cy="105" r="30" fill="url(#pl2)" />
+	<path d="M60 280 C 170 260, 230 300, 250 250 S 300 95, 420 120 S 540 220, 565 175" fill="none" stroke="#7cd4ff" stroke-width="7" opacity="0.5" filter="url(#g)" />
+	<path d="M60 280 C 170 260, 230 300, 250 250 S 300 95, 420 120 S 540 220, 565 175" fill="none" stroke="#e6f7ff" stroke-width="2.5" stroke-dasharray="2 9" stroke-linecap="round" />
+	<g transform="translate(565 175)" fill="none" stroke="#7cd4ff" stroke-width="4">
+		<path d="M-26 0 A26 26 0 0 1 -6 -25" /><path d="M0 -26 A26 26 0 0 1 25 -6" /><path d="M26 0 A26 26 0 0 1 6 25" /><path d="M0 26 A26 26 0 0 1 -25 6" />
+		<circle r="4" fill="#e8f8ff" stroke="none" />
+	</g>
+	<g fill="#ffd36b"><rect x="180" y="262" width="12" height="12" transform="rotate(45 186 268)" /><rect x="300" y="128" width="12" height="12" transform="rotate(45 306 134)" /><rect x="500" y="170" width="12" height="12" transform="rotate(45 506 176)" /></g>
+	<circle cx="60" cy="280" r="12" fill="#16314f" stroke="#7cd4ff" stroke-width="3" />
+</svg>

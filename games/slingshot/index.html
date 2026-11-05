@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<title>Slingshot</title>
+		<link rel="stylesheet" href="style.css" />
+		<script src="/sdk/galaxy.js"></script>
+	</head>
+	<body>
+		<canvas id="field" aria-label="Flight field"></canvas>
+
+		<!-- Title -->
+		<section id="screen-title" class="screen overlay">
+			<div class="title-card">
+				<p class="eyebrow" id="greeting">Aurora Drift survey corps</p>
+				<h1>Slingshot</h1>
+				<p class="lede">Thread probes through gravity wells to reach the relay. Let the worlds do the steering.</p>
+				<div class="menu">
+					<button class="btn primary" id="btn-campaign" type="button">Campaign</button>
+					<button class="btn" id="btn-survey" type="button">Survey run</button>
+				</div>
+				<p class="meta"><span class="gold">◆</span> <span id="title-stars">0</span>/96 shards &nbsp;·&nbsp; Best survey <span id="title-best">0</span></p>
+			</div>
+		</section>
+
+		<!-- Chapters -->
+		<section id="screen-chapters" class="screen overlay hidden">
+			<div class="panel chapters-panel">
+				<header class="panel-head">
+					<button class="icon-btn" id="btn-chapters-back" type="button" aria-label="Back">←</button>
+					<h2>Campaign</h2>
+					<span class="meta"><span class="gold">★</span> <span id="chapters-stars">0</span>/96</span>
+				</header>
+				<div id="chapters" class="chapters"></div>
+			</div>
+		</section>
+
+		<!-- In-flight HUD -->
+		<div id="hud" class="hud hidden">
+			<div class="hud-top">
+				<button class="icon-btn" id="btn-menu" type="button" aria-label="Menu">☰</button>
+				<div class="hud-title">
+					<strong id="hud-level">Level</strong>
+					<span id="hud-sub"></span>
+				</div>
+				<div class="hud-stats">
+					<span class="stat" id="stat-shots" title="Shots"></span>
+					<span class="stat gold" id="stat-shards" title="Shards"></span>
+				</div>
+			</div>
+			<div class="hud-bottom" id="aim-controls">
+				<div class="fine">
+					<button class="icon-btn" data-nudge="angle:-1" type="button" aria-label="Rotate aim left">⟲</button>
+					<button class="icon-btn" data-nudge="angle:1" type="button" aria-label="Rotate aim right">⟳</button>
+				</div>
+				<div class="power" aria-hidden="true"><span id="power-bar"></span></div>
+				<div class="fine">
+					<button class="icon-btn" data-nudge="power:-1" type="button" aria-label="Less power">−</button>
+					<button class="icon-btn" data-nudge="power:1" type="button" aria-label="More power">+</button>
+				</div>
+				<button class="btn primary launch" id="btn-launch" type="button">Launch</button>
+			</div>
+			<p class="hint" id="hint"></p>
+		</div>
+
+		<!-- Result -->
+		<div class="modal hidden" id="result" role="dialog" aria-modal="true" aria-labelledby="result-title">
+			<div class="card">
+				<p class="eyebrow" id="result-eyebrow">Relay reached</p>
+				<h2 id="result-title">Signal locked</h2>
+				<div class="result-stars" id="result-stars"></div>
+				<ul class="criteria" id="result-criteria"></ul>
+				<div class="menu row">
+					<button class="btn" id="btn-result-a" type="button">Retry</button>
+					<button class="btn primary" id="btn-result-b" type="button">Next</button>
+				</div>
+			</div>
+		</div>
+
+		<script src="js/world.js"></script>
+		<script src="js/campaign.js"></script>
+		<script src="js/game.js"></script>
+	</body>
+</html>

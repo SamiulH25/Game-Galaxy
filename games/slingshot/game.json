@@ -1,0 +1,35 @@
+{
+	"$schema": "../../schemas/game.schema.json",
+	"title": "Slingshot",
+	"tagline": "Thread probes through gravity wells to reach the relay.",
+	"description": "A gravity-assist physics game. Pull back to aim, let go, and let planets, moons and black holes bend your probe toward the relay. Thirty-two campaign levels add moving moons, asteroid fields, repulsors and wormholes, each with three shards to collect and a par to beat.\n\nSurvey mode is endless: five probes, ever-deeper space, and a first-shot bonus that keeps a great run alive.",
+	"system": "aurora",
+	"genres": ["physics", "puzzle", "arcade"],
+	"controls": "Drag anywhere and pull back to aim and set power; release to launch. Fine-tune with ⟲ ⟳ − + or the arrow keys (Shift for bigger steps). Space/Enter launches; hold during flight to fast-forward.",
+	"cover": "cover.svg",
+	"order": 1,
+	"planet": {
+		"name": "Perihelion",
+		"kind": "ocean",
+		"color": "#1d5c9e",
+		"accent": "#9ee8ff",
+		"size": 1.05,
+		"moons": 2,
+		"atmosphere": "#7cd4ff"
+	},
+	"scoring": { "label": "Survey points", "order": "desc" },
+	"achievements": [
+		{ "id": "first-contact", "title": "First Contact", "description": "Reach a relay.", "icon": "rocket" },
+		{ "id": "full-haul", "title": "Full Haul", "description": "Collect all three shards on a level.", "icon": "diamond" },
+		{ "id": "chapter-1", "title": "Launch Certified", "description": "Clear every Launch level.", "icon": "star" },
+		{ "id": "chapter-2", "title": "Assist Artist", "description": "Clear every Assist level.", "icon": "compass" },
+		{ "id": "chapter-3", "title": "Moon Dancer", "description": "Clear every Orbiters level.", "icon": "moon" },
+		{ "id": "chapter-4", "title": "Space Folder", "description": "Clear every Folded Space level.", "icon": "crown" },
+		{ "id": "close-call", "title": "Close Call", "description": "Reach the relay after skimming a planet's surface.", "icon": "flame" },
+		{ "id": "wormhole", "title": "Shortcut", "description": "Reach the relay through a wormhole.", "icon": "bolt" },
+		{ "id": "ace", "title": "Ace", "description": "Clear five campaign levels on the first shot.", "icon": "target" },
+		{ "id": "survey-10", "title": "Deep Survey", "description": "Reach depth 10 in one survey run.", "icon": "trophy" },
+		{ "id": "survey-25", "title": "Edge of the Map", "description": "Reach depth 25 in one survey run.", "icon": "shield", "secret": true },
+		{ "id": "all-stars", "title": "Star Chart", "description": "Earn all 96 campaign stars.", "icon": "crown", "secret": true }
+	]
+}

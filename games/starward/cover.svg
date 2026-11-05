@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360">
+	<defs>
+		<radialGradient id="bg" cx="50%" cy="0%" r="100%">
+			<stop offset="0" stop-color="#5a2410" />
+			<stop offset="0.55" stop-color="#1a0c07" />
+			<stop offset="1" stop-color="#080403" />
+		</radialGradient>
+		<radialGradient id="sun" cx="50%" cy="50%" r="50%">
+			<stop offset="0" stop-color="#fff3dc" />
+			<stop offset="0.3" stop-color="#ffb26b" />
+			<stop offset="0.7" stop-color="#ff6a2b" stop-opacity="0.6" />
+			<stop offset="1" stop-color="#ff6a2b" stop-opacity="0" />
+		</radialGradient>
+		<linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+			<stop offset="0" stop-color="#2b1c15" />
+			<stop offset="1" stop-color="#1b110c" />
+		</linearGradient>
+	</defs>
+	<rect width="640" height="360" fill="url(#bg)" />
+	<circle cx="320" cy="70" r="140" fill="url(#sun)" />
+	<g transform="translate(320 300)">
+		<g transform="rotate(-24) translate(-60 -170)">
+			<rect width="120" height="166" rx="12" fill="url(#card)" stroke="#ff6b5b" stroke-width="3" />
+			<circle cx="60" cy="62" r="22" fill="none" stroke="#ff6b5b" stroke-width="4" /><path d="M60 30v16M60 78v16M28 62h16M76 62h16" stroke="#ff6b5b" stroke-width="4" />
+		</g>
+		<g transform="rotate(0) translate(-60 -190)">
+			<rect width="120" height="166" rx="12" fill="url(#card)" stroke="#5bb8ff" stroke-width="3" />
+			<path d="M60 96s26-11 26-33V44l-26-10-26 10v19c0 22 26 33 26 33z" fill="none" stroke="#5bb8ff" stroke-width="4" />
+		</g>
+		<g transform="rotate(24) translate(-60 -170)">
+			<rect width="120" height="166" rx="12" fill="url(#card)" stroke="#c58bff" stroke-width="3" />
+			<path d="M60 32l8 20 21 3-16 14 5 21-18-11-18 11 5-21-16-14 21-3z" fill="none" stroke="#c58bff" stroke-width="4" stroke-linejoin="round" />
+		</g>
+	</g>
+	<g transform="translate(70 70) scale(1.4)">
+		<path d="M18 35 L40 22 L92 28 L114 35 L92 42 L40 48 Z" fill="#e9c9a8" stroke="#ffcf9e" stroke-width="1.5" />
+		<path d="M48 24 L64 8 L72 26 Z M48 46 L64 62 L72 44 Z" fill="#8b5a3f" />
+		<ellipse cx="14" cy="35" rx="14" ry="7" fill="#ffb26b" opacity="0.8" />
+	</g>
+</svg>

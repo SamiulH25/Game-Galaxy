@@ -1,0 +1,196 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"type": "object",
+	"properties": {
+		"$schema": {
+			"type": "string"
+		},
+		"title": {
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 60
+		},
+		"tagline": {
+			"type": "string",
+			"maxLength": 120
+		},
+		"description": {
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 2000
+		},
+		"system": {
+			"type": "string",
+			"pattern": "^[a-z0-9][a-z0-9-]{0,47}$"
+		},
+		"genres": {
+			"maxItems": 6,
+			"type": "array",
+			"items": {
+				"type": "string",
+				"minLength": 1,
+				"maxLength": 24
+			}
+		},
+		"controls": {
+			"type": "string",
+			"maxLength": 400
+		},
+		"entry": {
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 200
+		},
+		"cover": {
+			"type": "string",
+			"minLength": 1,
+			"maxLength": 200
+		},
+		"order": {
+			"type": "number"
+		},
+		"hidden": {
+			"type": "boolean"
+		},
+		"planet": {
+			"type": "object",
+			"properties": {
+				"name": {
+					"type": "string",
+					"minLength": 1,
+					"maxLength": 40
+				},
+				"kind": {
+					"type": "string",
+					"enum": [
+						"terran",
+						"rocky",
+						"gas",
+						"ice",
+						"lava",
+						"ocean"
+					]
+				},
+				"color": {
+					"type": "string",
+					"pattern": "^#[0-9a-fA-F]{6}$"
+				},
+				"accent": {
+					"type": "string",
+					"pattern": "^#[0-9a-fA-F]{6}$"
+				},
+				"size": {
+					"type": "number",
+					"minimum": 0.4,
+					"maximum": 2.5
+				},
+				"rings": {
+					"anyOf": [
+						{
+							"type": "boolean"
+						},
+						{
+							"type": "object",
+							"properties": {
+								"color": {
+									"type": "string",
+									"pattern": "^#[0-9a-fA-F]{6}$"
+								},
+								"tilt": {
+									"type": "number",
+									"minimum": -1.5,
+									"maximum": 1.5
+								}
+							},
+							"additionalProperties": false
+						}
+					]
+				},
+				"moons": {
+					"type": "integer",
+					"minimum": 0,
+					"maximum": 4
+				},
+				"atmosphere": {
+					"anyOf": [
+						{
+							"type": "boolean"
+						},
+						{
+							"type": "string",
+							"pattern": "^#[0-9a-fA-F]{6}$"
+						}
+					]
+				}
+			},
+			"additionalProperties": false
+		},
+		"scoring": {
+			"type": "object",
+			"properties": {
+				"label": {
+					"type": "string",
+					"minLength": 1,
+					"maxLength": 24
+				},
+				"order": {
+					"type": "string",
+					"enum": [
+						"desc",
+						"asc"
+					]
+				},
+				"format": {
+					"type": "string",
+					"enum": [
+						"number",
+						"time"
+					]
+				}
+			},
+			"additionalProperties": false
+		},
+		"achievements": {
+			"maxItems": 100,
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string",
+						"pattern": "^[a-z0-9][a-z0-9_-]{0,47}$"
+					},
+					"title": {
+						"type": "string",
+						"minLength": 1,
+						"maxLength": 60
+					},
+					"description": {
+						"type": "string",
+						"minLength": 1,
+						"maxLength": 200
+					},
+					"icon": {
+						"type": "string"
+					},
+					"secret": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"id",
+					"title",
+					"description"
+				],
+				"additionalProperties": false
+			}
+		}
+	},
+	"required": [
+		"title",
+		"description",
+		"system"
+	],
+	"additionalProperties": false,
+	"title": "Game Galaxy game manifest (game.json)"
+}
