@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360">
+	<defs>
+		<radialGradient id="bg" cx="50%" cy="40%" r="80%">
+			<stop offset="0" stop-color="#2a1838" />
+			<stop offset="1" stop-color="#06040c" />
+		</radialGradient>
+		<radialGradient id="core"><stop offset="0" stop-color="#e8f8ff" /><stop offset="0.4" stop-color="#7cd4ff" stop-opacity="0.8" /><stop offset="1" stop-color="#7cd4ff" stop-opacity="0" /></radialGradient>
+		<filter id="glow"><feGaussianBlur stdDeviation="3" /></filter>
+	</defs>
+	<rect width="640" height="360" fill="url(#bg)" />
+	<g fill="#ffffff" fill-opacity="0.035">
+		<rect x="40" y="20" width="560" height="320" />
+	</g>
+	<path d="M20 90 H180 V270 H400 V90 H620" fill="none" stroke="#2a2032" stroke-width="40" />
+	<path d="M20 90 H180 V270 H400 V90 H620" fill="none" stroke="#ff9a4d" stroke-opacity="0.35" stroke-width="16" />
+	<path d="M20 90 H180 V270 H400 V90 H620" fill="none" stroke="#ffbe78" stroke-width="2" stroke-dasharray="6 14" />
+	<circle cx="610" cy="90" r="50" fill="url(#core)" />
+	<g>
+		<circle cx="250" cy="180" r="18" fill="#1b1f33" stroke="#7cd4ff" stroke-width="2" /><rect x="250" y="172" width="22" height="5" fill="#7cd4ff" /><rect x="250" y="182" width="22" height="5" fill="#7cd4ff" />
+		<circle cx="330" cy="180" r="18" fill="#1b1f33" stroke="#c9a0ff" stroke-width="2" /><circle cx="330" cy="176" r="8" fill="#c9a0ff" />
+		<circle cx="110" cy="180" r="18" fill="#1b1f33" stroke="#ffb36b" stroke-width="2" /><rect x="110" y="174" width="24" height="12" fill="#ffb36b" />
+		<circle cx="480" cy="180" r="18" fill="#1b1f33" stroke="#ff7ab8" stroke-width="2" /><rect x="474" y="176" width="30" height="7" fill="#ff7ab8" />
+	</g>
+	<g filter="url(#glow)">
+		<path d="M330 176 L370 230 L345 255 L395 270" stroke="#c9a0ff" stroke-width="3" fill="none" />
+		<path d="M480 180 L400 110" stroke="#ff7ab8" stroke-width="4" />
+	</g>
+	<g>
+		<circle cx="370" cy="270" r="7" fill="#ffb36b" /><circle cx="395" cy="270" r="6" fill="#ff8a6b" /><rect x="335" y="258" width="16" height="16" fill="#c08bff" /><circle cx="400" cy="110" r="9" fill="#9dff8a" /><path d="M230 260 l10 -14 l10 14 l-10 -5 z" fill="#7cf0ff" />
+	</g>
+</svg>

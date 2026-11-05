@@ -1,0 +1,37 @@
+{
+	"$schema": "../../schemas/game.schema.json",
+	"title": "Bastion Ring",
+	"tagline": "Hold the orbital ring against endless swarms.",
+	"description": "A tower defense game across four orbital stations. Build six tower types — Pulse, Cannon, Frost, Tesla, Lance and Beacon — upgrade them three times, then specialise each into one of two forms. Survive 25 waves of runners, swarms, armored brutes, flyers, shield bearers, splitters and Dreadnought bosses to earn up to three stars, then see how far you can push each map in Endless mode.",
+	"system": "ember",
+	"genres": ["strategy", "tower defense"],
+	"controls": "Pick a tower (1–6), tap a free tile to build (Shift-click to keep building). Tap a tower to upgrade (U), specialise, change targeting or sell (S). Enter starts the next wave, Space pauses, F cycles speed.",
+	"cover": "cover.svg",
+	"order": 2,
+	"planet": {
+		"name": "Bastion",
+		"kind": "rocky",
+		"color": "#8a5a3c",
+		"accent": "#ffb36b",
+		"size": 0.95,
+		"rings": { "color": "#ffcf9e", "tilt": 0.15 },
+		"moons": 0,
+		"atmosphere": false
+	},
+	"scoring": { "label": "Score", "order": "desc" },
+	"achievements": [
+		{ "id": "first-wave", "title": "Holding the Line", "description": "Clear your first wave.", "icon": "shield" },
+		{ "id": "map-outer", "title": "Outer Ring Secured", "description": "Win on Outer Ring.", "icon": "star" },
+		{ "id": "map-spiral", "title": "Spiral Secured", "description": "Win on Spiral Dock.", "icon": "compass" },
+		{ "id": "map-cross", "title": "Crossfire Secured", "description": "Win on Crossfire.", "icon": "target" },
+		{ "id": "map-twin", "title": "Twin Gates Secured", "description": "Win on Twin Gates.", "icon": "crown" },
+		{ "id": "flawless", "title": "Flawless Defence", "description": "Win a map without losing a single life.", "icon": "heart" },
+		{ "id": "specialist", "title": "Specialist", "description": "Specialise a tower.", "icon": "rocket" },
+		{ "id": "chain-reaction", "title": "Chain Reaction", "description": "Hit seven enemies with one lightning arc.", "icon": "bolt" },
+		{ "id": "boss-slayer", "title": "Dreadnought Down", "description": "Destroy a Dreadnought.", "icon": "flame" },
+		{ "id": "big-spender", "title": "War Budget", "description": "Spend 5,000 credits in one game.", "icon": "diamond" },
+		{ "id": "endless-40", "title": "Unbreakable", "description": "Reach wave 40 in Endless.", "icon": "trophy" },
+		{ "id": "minimalist", "title": "Minimalist", "description": "Win a map with six towers or fewer.", "icon": "moon", "secret": true },
+		{ "id": "all-stars", "title": "Ring Commander", "description": "Earn three stars on every map.", "icon": "crown", "secret": true }
+	]
+}
